@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <title>Test — pixels triangulaires</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #222; color: #eee; font-family: system-ui, sans-serif;
+      padding: 24px; display: flex; flex-direction: column; align-items: center; gap: 16px;
+    }
+    h1 { font-size: 20px; font-weight: 600; }
+    #info { color: #aaa; font-size: 13px; }
+    .row { display: flex; gap: 24px; flex-wrap: wrap; justify-content: center; }
+    .col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+    .col span { font-size: 13px; color: #ccc; }
+    canvas { background: #333; border: 1px solid #555; image-rendering: pixelated; }
+    #file-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ccc; }
+  </style>
+</head>
+<body>
+  <div id="file-row">
+    <label for="c-file">Texture d'entrée :</label>
+    <input type="file" id="c-file" accept="image/*" />
+  </div>
+  <p id="info"></p>
+
+  <div class="row">
+    <div class="col">
+      <span>Texture source</span>
+      <canvas id="c-source"></canvas>
+    </div>
+    <div class="col">
+      <span>Méthode actuelle : carré étiré sur le triangle</span>
+      <canvas id="c-naive"></canvas>
+    </div>
+    <div class="col">
+      <span>Nouvelle méthode : 256 pixels triangulaires</span>
+      <canvas id="c-tri"></canvas>
+    </div>
+    <div class="col">
+      <canvas id="c-wire"></canvas>
+    </div>
+  </div>
+
+  <script type="module" src="triangle-texture-test.js"></script>
+</body>
+</html>

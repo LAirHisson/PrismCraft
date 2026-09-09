@@ -1,0 +1,37 @@
+{
+  "recipes": [
+    {
+      "type": "shapeless",
+      "ingredients": ["Log"],
+      "result": { "block": "Planks", "count": 4 }
+    },
+    {
+      "type": "shapeless",
+      "ingredients": ["Sand"],
+      "result": { "block": "Glass", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [
+        ["Planks", "Planks"],
+        ["Planks", "Planks"]
+      ],
+      "result": { "block": "Crafting Table", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [["Planks", "Planks", "Planks"]],
+      "result": { "block": "Planks Slab", "count": 6 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [["Cobbletone", "Cobbletone", "Cobbletone"]],
+      "result": { "block": "Cobblestone Slab", "count": 6 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [["Stone", "Stone", "Stone"]],
+      "result": { "block": "Stone Slab", "count": 6 }
+    }
+  ]
+}

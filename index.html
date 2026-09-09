@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PrismCraft</title>
+</head>
+<body>
+    <div id="canvas"></div>
+    <div id="credits">
+        <span id="credits-label">Développé par</span> <a href="https://www.youtube.com/@LAirHisson" target="_blank" rel="noopener noreferrer">LAirHisson</a>
+    </div>
+    <script type="module" src="main.js"></script>
+</body>
+<style>
+    /* Reset CSS */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    /*  Font pixel Monocraft */
+    @font-face {
+        font-family: 'Monocraft';
+        src: url('/assets/fonts/Monocraft-Light.ttf') format('truetype');
+    }
+    body {
+        font-family: 'Monocraft', monospace;
+    }
+    #credits {
+        position: fixed;
+        bottom: 6px;
+        right: 10px;
+        z-index: 1000;
+        pointer-events: none;
+        font-size: 11px;
+        color: rgba(255, 255, 255, 0.65);
+        text-shadow: 1px 1px 0 #000;
+    }
+    #credits a {
+        pointer-events: auto;
+        color: rgba(255, 255, 255, 0.85);
+        text-decoration: none;
+    }
+    #credits a:hover {
+        color: #ffffff;
+        text-decoration: underline;
+    }
+</style>
+</html>
