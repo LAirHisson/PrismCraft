@@ -1,3 +1,5 @@
+import { getBlockIconDataURL } from "../rendering/BlockIconRenderer.js";
+
 export const TEXTURE_PATH = "assets/textures/blocks/";
 const GUI_PATH = "assets/textures/gui/hotbar/";
 export const SLOT_BG = `${GUI_PATH}slot_background.png`;
@@ -10,16 +12,40 @@ export function triClip(isUp) {
     : "polygon(0% 0%, 100% 0%, 50% 100%)";
 }
 
-// Fond d'une case d'item. Pour un slab : la texture reste à l'échelle (cover), mais on
-// masque sa moitié haute avec `base` → on ne voit que le bas, sans écrasement.
-// `base` est soit une couleur (#..), soit un `url("…")`.
-export function itemBackground(texUrl, base, isSlab) {
-  const tex = `url("${texUrl}") center / cover`;
-  if (!isSlab) return tex;
-  const topMask = base.startsWith("#")
-    ? `linear-gradient(${base}, ${base}) top / 100% 50% no-repeat`
-    : `${base} top / 100% 50% no-repeat`;
-  return `${topMask}, ${tex}`;
+// Icône 3D d'un item : élément NON clippé, volontairement plus grand que la case et
+// centré dessus — le rendu 3D du prisme (bake transparent, voir BlockIconRenderer)
+// déborde ainsi au-dessus du triangle plat de la case plutôt que d'être rogné à ses
+// arêtes. `tri` (la case elle-même) garde toujours son fond plat constant ; c'est cet
+// élément, empilé par-dessus, qui affiche l'icône selon le contenu du slot.
+const ICON_OVERFLOW = 1.35;
+
+export function createItemIcon(cellW, cellH) {
+  const w = cellW * ICON_OVERFLOW;
+  const h = cellH * ICON_OVERFLOW;
+  const icon = document.createElement("div");
+  icon.style.cssText = `
+    position: absolute;
+    left: ${(cellW - w) / 2}px;
+    top: ${(cellH - h) / 2}px;
+    width: ${w}px; height: ${h}px;
+    background-size: contain;
+    background-position: center;
+    background-repeat: no-repeat;
+    image-rendering: pixelated;
+    pointer-events: none;
+    display: none;
+  `;
+  return icon;
+}
+
+/** Affiche l'icône du bloc `blockId` (ou la masque si `blockId` est `null`). */
+export function setItemIcon(icon, blockId, blockRegistry, materials) {
+  if (blockId === null) {
+    icon.style.display = "none";
+    return;
+  }
+  icon.style.backgroundImage = `url("${getBlockIconDataURL(blockId, blockRegistry, materials)}")`;
+  icon.style.display = "block";
 }
 
 // Contour fait de lignes texturées (slot_side.png) le long des arêtes d'un polygone

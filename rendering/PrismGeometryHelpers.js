@@ -217,10 +217,126 @@ export function getPrismGeometryBottom(orientation, mapping = 'square') {
 }
 
 /**
- * Groupe de 3 meshes (côtés/haut/bas) représentant un bloc en dehors de toute grille —
- * pour l'afficher tenu en main ou en aperçu d'icône. Réutilise les géométries mises en
- * cache (partagées avec le mesher de chunks — NE PAS les disposer) et les matériaux du
- * registre, donc rendu identique au bloc réel (textures, mapping 'remap' inclus).
+ * Géométrie d'une croix à 3 lames (plante) — même construction que ChunkMesher
+ * (dupliquée volontairement : ChunkMesher travaille sur des tableaux bruts fusionnés
+ * par matériau, incompatibles avec un BufferGeometry autonome comme celui-ci).
+ * @param {Orientation.UP | Orientation.DOWN} orientation
+ * @returns {THREE.BufferGeometry}
+ */
+export function createPlantGeometry(orientation) {
+  const S = TRIANGLE_SIDE, H = TRIANGLE_HEIGHT, BH = BLOCK_HEIGHT;
+  const V =
+    orientation === Orientation.UP
+      ? [[-S / 2, -H / 3], [S / 2, -H / 3], [0, (2 * H) / 3]]
+      : [[S / 2, H / 3], [-S / 2, H / 3], [0, (-2 * H) / 3]];
+
+  const pos = [], nor = [], uv = [];
+  const tri = (a, b, c, n, ua, ub, uc) => {
+    pos.push(...a, ...b, ...c);
+    nor.push(...n, ...n, ...n);
+    uv.push(...ua, ...ub, ...uc);
+  };
+
+  for (const [vx, vz] of V) {
+    const len = Math.hypot(vz, vx) || 1;
+    const nf = [-vz / len, 0, vx / len];
+    const nb = [vz / len, 0, -vx / len];
+    const G0 = [0, 0, 0], V0 = [vx, 0, vz], V1 = [vx, BH, vz], G1 = [0, BH, 0];
+    tri(G0, V0, V1, nf, [0.5, 0], [1, 0], [1, 1]);
+    tri(G0, V1, G1, nf, [0.5, 0], [1, 1], [0.5, 1]);
+    tri(G0, V1, V0, nb, [0.5, 0], [0, 1], [0, 0]);
+    tri(G0, G1, V1, nb, [0.5, 0], [0.5, 1], [0, 1]);
+  }
+
+  return buildGeometry(pos, nor, uv);
+}
+
+/**
+ * Géométrie en cache pour la croix de plante.
+ * @param {Orientation.UP | Orientation.DOWN} orientation
+ * @returns {THREE.BufferGeometry}
+ */
+export function getPlantGeometry(orientation) {
+  const key = `${orientation}_plant`;
+  if (!_cache.has(key)) {
+    _cache.set(key, createPlantGeometry(orientation));
+  }
+  return _cache.get(key);
+}
+
+// Copie une géométrie en transformant Y (échelle + offset) et éventuellement V de la
+// texture — dérive une variante "slab" (demi-hauteur) d'une géométrie prisme pleine
+// déjà construite. Même formule que ChunkMesher.xformData, réappliquée ici sur un
+// THREE.BufferGeometry autonome plutôt que sur des tableaux bruts fusionnés.
+function scaleGeometryY(geo, yScale, yOffset, vScale = 1, vOffset = 0) {
+  const pos = Float32Array.from(geo.attributes.position.array);
+  for (let i = 1; i < pos.length; i += 3) pos[i] = pos[i] * yScale + yOffset;
+  let uv = geo.attributes.uv.array;
+  if (vScale !== 1 || vOffset !== 0) {
+    uv = Float32Array.from(uv);
+    for (let i = 1; i < uv.length; i += 2) uv[i] = uv[i] * vScale + vOffset;
+  }
+  const ruv = geo.attributes.remapUv?.array;
+  return buildGeometry(pos, geo.attributes.normal.array, uv, ruv);
+}
+
+/**
+ * Géométrie en cache pour les côtés d'un slab (demi-bloc).
+ * @param {Orientation.UP | Orientation.DOWN} orientation
+ * @param {'top'|'bottom'} half
+ * @returns {THREE.BufferGeometry}
+ */
+export function getSlabGeometrySides(orientation, half) {
+  const key = `${orientation}_slab_${half}_sides`;
+  if (!_cache.has(key)) {
+    const base = getPrismGeometrySides(orientation);
+    _cache.set(
+      key,
+      half === "top" ? scaleGeometryY(base, 0.5, 0.5, 0.5, 0.5) : scaleGeometryY(base, 0.5, 0, 0.5, 0),
+    );
+  }
+  return _cache.get(key);
+}
+
+/**
+ * Géométrie en cache pour la calotte HAUT d'un slab (demi-bloc).
+ * @param {Orientation.UP | Orientation.DOWN} orientation
+ * @param {'square'|'triangle'|'remap'} mapping
+ * @param {'top'|'bottom'} half
+ * @returns {THREE.BufferGeometry}
+ */
+export function getSlabGeometryTop(orientation, mapping, half) {
+  const key = `${orientation}_${mapping}_slab_${half}_top`;
+  if (!_cache.has(key)) {
+    const base = getPrismGeometryTop(orientation, mapping);
+    _cache.set(key, half === "top" ? base : scaleGeometryY(base, 0.5, 0));
+  }
+  return _cache.get(key);
+}
+
+/**
+ * Géométrie en cache pour la calotte BAS d'un slab (demi-bloc).
+ * @param {Orientation.UP | Orientation.DOWN} orientation
+ * @param {'square'|'triangle'|'remap'} mapping
+ * @param {'top'|'bottom'} half
+ * @returns {THREE.BufferGeometry}
+ */
+export function getSlabGeometryBottom(orientation, mapping, half) {
+  const key = `${orientation}_${mapping}_slab_${half}_bottom`;
+  if (!_cache.has(key)) {
+    const base = getPrismGeometryBottom(orientation, mapping);
+    _cache.set(key, half === "top" ? scaleGeometryY(base, 1, 0.5) : base);
+  }
+  return _cache.get(key);
+}
+
+/**
+ * Groupe de meshes représentant un bloc en dehors de toute grille — pour l'afficher
+ * tenu en main ou en aperçu d'icône. La forme suit `blockRegistry.getShape()` (prisme
+ * plein, plante, ou slab en moitié basse — un item en main n'a pas de moitié posée à
+ * refléter). Réutilise les géométries mises en cache (partagées avec le mesher de
+ * chunks — NE PAS les disposer) et les matériaux du registre, donc rendu identique au
+ * bloc réel (textures, mapping 'remap' inclus).
  * @param {number} blockId
  * @param {Map<number,{side,top,bottom}>} materials
  * @param {import('../world/BlockRegistry.js').BlockRegistry} blockRegistry
@@ -229,10 +345,27 @@ export function getPrismGeometryBottom(orientation, mapping = 'square') {
  */
 export function createPrismItemGroup(blockId, materials, blockRegistry, orientation = Orientation.UP) {
   const mat = materials.get(blockId);
+  const shape = blockRegistry.getShape(blockId);
+  const group = new THREE.Group();
+
+  if (shape === "plant") {
+    group.add(new THREE.Mesh(getPlantGeometry(orientation), mat?.side));
+    return group;
+  }
+
   const topMapping = blockRegistry.getTopMapping(blockId);
   const bottomMapping = blockRegistry.getBottomMapping(blockId);
 
-  const group = new THREE.Group();
+  if (shape === "slab") {
+    const half = "bottom";
+    group.add(
+      new THREE.Mesh(getSlabGeometrySides(orientation, half), mat?.side),
+      new THREE.Mesh(getSlabGeometryTop(orientation, topMapping, half), mat?.top ?? mat?.side),
+      new THREE.Mesh(getSlabGeometryBottom(orientation, bottomMapping, half), mat?.bottom ?? mat?.side),
+    );
+    return group;
+  }
+
   group.add(
     new THREE.Mesh(getPrismGeometrySides(orientation), mat?.side),
     new THREE.Mesh(getPrismGeometryTop(orientation, topMapping), mat?.top ?? mat?.side),

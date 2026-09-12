@@ -1,7 +1,6 @@
 import { HOTBAR_SIZE, INV_COLS, INV_ROWS } from "../player/Inventory.js";
-import { triClip, createTriBorder, itemBackground } from "./triSlot.js";
+import { triClip, createTriBorder, createItemIcon, setItemIcon } from "./triSlot.js";
 import { i18n } from "../core/I18n.js";
-import { getBlockIconDataURL } from "../rendering/BlockIconRenderer.js";
 
 const SCALE = 2;
 const PANEL_BG = "#C6C6C6";
@@ -125,7 +124,8 @@ export class InventoryUI {
     document.body.appendChild(backdrop);
     this._backdrop = backdrop;
 
-    // Objet tenu au curseur (suit la souris) — triangle clippé + compteur hors clip
+    // Objet tenu au curseur (suit la souris) — pas de case sous l'icône (rien à
+    // "déborder"), donc juste l'icône 3D non clippée + compteur.
     const ghost = document.createElement("div");
     ghost.style.cssText = `
       position: fixed; display: none;
@@ -134,14 +134,7 @@ export class InventoryUI {
       pointer-events: none;
       z-index: 300;
     `;
-    const ghostTri = document.createElement("div");
-    ghostTri.style.cssText = `
-      position: absolute; top: 0; left: 0;
-      width: ${B}px; height: ${H}px;
-      clip-path: ${triClip(true)};
-      background-size: cover; background-repeat: no-repeat;
-      image-rendering: pixelated;
-    `;
+    const ghostIcon = createItemIcon(B, H);
     const ghostCount = document.createElement("span");
     ghostCount.style.cssText = `
       position: absolute; bottom: ${1 * SCALE}px; left: 50%;
@@ -149,11 +142,11 @@ export class InventoryUI {
       color: #fff; font-size: ${COUNT_FONT}px; font-weight: bold;
       text-shadow: 0 1px 2px #000;
     `;
-    ghost.appendChild(ghostTri);
+    ghost.appendChild(ghostIcon);
     ghost.appendChild(ghostCount);
     document.body.appendChild(ghost);
     this._ghost = ghost;
-    this._ghostTri = ghostTri;
+    this._ghostIcon = ghostIcon;
     this._ghostCount = ghostCount;
   }
 
@@ -287,22 +280,21 @@ export class InventoryUI {
     wrap.dataset.index = String(index);
 
     const tri = document.createElement("div");
-    let bg = SLOT_FILL;
-    if (blockId !== null) {
-      const url = getBlockIconDataURL(blockId, this.blockRegistry, this.materials);
-      bg = itemBackground(url, SLOT_FILL, this.blockRegistry.getShape(blockId) === "slab");
-    }
     tri.style.cssText = `
       position: absolute; top: 0; left: 0;
       width: ${B}px; height: ${H}px;
       clip-path: ${triClip(isUp)};
-      background: ${bg};
+      background: ${SLOT_FILL};
       image-rendering: pixelated;
       cursor: ${blockId !== null ? "grab" : "default"};
     `;
 
+    const icon = createItemIcon(B, H);
+    setItemIcon(icon, blockId, this.blockRegistry, this.materials);
+
     wrap.appendChild(tri);
     wrap.appendChild(createTriBorder(isUp, B, H, BORDER_THICK));
+    wrap.appendChild(icon);
 
     if (slot && slot.count > 1) {
       const count = document.createElement("span");
@@ -325,7 +317,7 @@ export class InventoryUI {
       return;
     }
     this._ghost.style.display = "block";
-    this._ghostTri.style.backgroundImage = `url("${getBlockIconDataURL(cur.blockId, this.blockRegistry, this.materials)}")`;
+    setItemIcon(this._ghostIcon, cur.blockId, this.blockRegistry, this.materials);
     this._ghostCount.textContent = cur.count > 1 ? cur.count : "";
   }
 

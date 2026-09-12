@@ -9,8 +9,8 @@ import { createCrosshair } from "../ui/Crosshair.js";
 const FP_ARM_POS = new THREE.Vector3(0.6, -0.4, -0.5);
 const FP_ARM_ROT = new THREE.Euler(1.6, 0.3, 0);
 
-const HELD_BLOCK_POS = new THREE.Vector3(0.18, -0.8, -0.15);
-const HELD_BLOCK_ROT = new THREE.Euler(1.4, 0.6, 0.7);
+const HELD_BLOCK_POS = new THREE.Vector3(0.02, -0.8, 0.2);
+const HELD_BLOCK_ROT = new THREE.Euler(Math.PI+2, 1, 0);
 const HELD_BLOCK_SCALE = 0.45;
 
 const THIRD_PERSON_DIST = 3.5;

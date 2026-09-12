@@ -5,9 +5,9 @@ import {
   SLOT_LINE_SELECTED,
   triClip,
   createTriBorder,
-  itemBackground,
+  createItemIcon,
+  setItemIcon,
 } from "./triSlot.js";
-import { getBlockIconDataURL } from "../rendering/BlockIconRenderer.js";
 
 const SCALE = 2;
 const CELL_W = 46 * SCALE;
@@ -100,11 +100,13 @@ export class HotbarUI {
       `;
 
       const outline = createTriBorder(isUp, CELL_W, CELL_H, BORDER_THICK);
+      const icon = createItemIcon(CELL_W, CELL_H);
       triWrap.appendChild(tri);
       triWrap.appendChild(outline);
+      triWrap.appendChild(icon);
       triWrap.appendChild(count);
       bar.appendChild(triWrap);
-      this._slots.push({ tri, outline, count });
+      this._slots.push({ tri, outline, icon, count });
     }
 
     document.body.appendChild(bar);
@@ -157,17 +159,10 @@ export class HotbarUI {
   }
 
   _updateContent() {
-    const emptyBg = `url("${SLOT_BG}") center / cover`;
-    this._slots.forEach(({ tri, count }, i) => {
+    this._slots.forEach(({ icon, count }, i) => {
       const itemSlot = this.inventory.getSlot(i);
       const blockId = itemSlot ? itemSlot.blockId : null;
-      if (blockId === null) {
-        tri.style.background = emptyBg;
-      } else {
-        const url = getBlockIconDataURL(blockId, this.blockRegistry, this.materials);
-        const isSlab = this.blockRegistry.getShape(blockId) === "slab";
-        tri.style.background = itemBackground(url, `url("${SLOT_BG}")`, isSlab);
-      }
+      setItemIcon(icon, blockId, this.blockRegistry, this.materials);
 
       const c = itemSlot ? itemSlot.count : 0;
       count.textContent = c > 1 ? c : "";

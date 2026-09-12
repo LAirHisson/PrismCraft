@@ -46,7 +46,7 @@ installBrowserGuards();
     blockRegistry, materials, craftingSystem, existingSave, seed,
   });
 
-  installDevConsole(playerController);
+  installDevConsole(playerController, inventory);
 
   const viewRig = await createViewRig({ camera, worldRoot, inventory, materials, blockRegistry });
 
