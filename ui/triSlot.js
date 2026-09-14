@@ -17,7 +17,7 @@ export function triClip(isUp) {
 // déborde ainsi au-dessus du triangle plat de la case plutôt que d'être rogné à ses
 // arêtes. `tri` (la case elle-même) garde toujours son fond plat constant ; c'est cet
 // élément, empilé par-dessus, qui affiche l'icône selon le contenu du slot.
-const ICON_OVERFLOW = 1.35;
+export const ICON_OVERFLOW = 1.35;
 
 export function createItemIcon(cellW, cellH) {
   const w = cellW * ICON_OVERFLOW;

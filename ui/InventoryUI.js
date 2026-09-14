@@ -1,5 +1,5 @@
 import { HOTBAR_SIZE, INV_COLS, INV_ROWS } from "../player/Inventory.js";
-import { triClip, createTriBorder, createItemIcon, setItemIcon } from "./triSlot.js";
+import { triClip, createTriBorder, createItemIcon, setItemIcon, ICON_OVERFLOW } from "./triSlot.js";
 import { i18n } from "../core/I18n.js";
 
 const SCALE = 2;
@@ -18,6 +18,13 @@ const ROW_STEP = H + ROW_GAP;   // pas vertical d'une ligne à l'autre
 
 const PERSONAL_CRAFT = { zone: "craft", cols: 2, rows: 2 };
 
+// Palette créative : au-delà de 3 lignes elle mangerait l'écran, on la borne et on scrolle.
+const PALETTE_MAX_ROWS = 3;
+const SCROLLBAR_W = 7 * SCALE;
+// Marge haut/bas pour que les icônes, plus grandes que leur case, ne soient pas
+// rognées par le bord de la zone de défilement.
+const ICON_BLEED = Math.round(((ICON_OVERFLOW - 1) / 2) * H);
+
 export class InventoryUI {
   constructor(inventory, blockRegistry, cameraController, craftingSystem, gameMode, materials) {
     this.inventory = inventory;
@@ -31,6 +38,7 @@ export class InventoryUI {
     this._tab = "inventory"; // "inventory" | "give" (give = créatif seulement)
     this._table = false;     // true = écran d'une crafting table (grille N×N)
     this._craft = PERSONAL_CRAFT;
+    this._paletteScroll = 0; // survit aux reconstructions du panneau (voir _refresh)
 
     this._buildDOM();
     this._bindEvents();
@@ -158,9 +166,11 @@ export class InventoryUI {
     this._buildTabs(tabsShown);
 
     this._content.textContent = "";
-    this._content.appendChild(
-      this._tab === "give" ? this._buildPalette() : this._buildCraftModule(),
-    );
+    const top = this._tab === "give" ? this._buildPalette() : this._buildCraftModule();
+    this._content.appendChild(top);
+    // Prendre un bloc rafraîchit tout le panneau : sans ça la palette se remettrait
+    // en haut à chaque clic. Le scrollTop ne tient qu'une fois l'élément dans le DOM.
+    if (this._tab === "give") top.scrollTop = this._paletteScroll;
     this._content.appendChild(this._buildGrid("storage", INV_COLS, INV_ROWS));
     this._content.appendChild(this._buildGrid("hotbar", HOTBAR_SIZE, 1));
   }
@@ -211,7 +221,21 @@ export class InventoryUI {
         }),
       );
     });
-    return grid;
+
+    const view = document.createElement("div");
+    view.style.cssText = `
+      width: ${this._stripWidth(cols) + SCROLLBAR_W}px;
+      max-height: ${PALETTE_MAX_ROWS * H + (PALETTE_MAX_ROWS - 1) * ROW_GAP + 2 * ICON_BLEED}px;
+      overflow-y: auto; overflow-x: hidden;
+      padding: ${ICON_BLEED}px 0;
+      scrollbar-width: thin;
+      scrollbar-color: ${SLOT_FILL} ${PANEL_BG};
+    `;
+    view.addEventListener("scroll", () => {
+      this._paletteScroll = view.scrollTop;
+    });
+    view.appendChild(grid);
+    return view;
   }
 
   _craftGrid() {

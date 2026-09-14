@@ -149,6 +149,9 @@ export class HotbarUI {
     document.addEventListener(
       "wheel",
       (e) => {
+        // Souris déverrouillée = une interface est ouverte (inventaire, menu) : la
+        // molette y sert à faire défiler, pas à changer d'objet en main.
+        if (!document.pointerLockElement) return;
         const dir = e.deltaY > 0 ? 1 : -1;
         const next =
           (this.inventory.selectedHotbarSlot + dir + HOTBAR_SIZE) % HOTBAR_SIZE;
