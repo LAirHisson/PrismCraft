@@ -13,6 +13,7 @@ const cache = new Map();
 let renderer = null;
 let scene = null;
 let camera = null;
+let itemCamera = null;
 
 function ensureRenderer() {
   if (renderer) return;
@@ -35,6 +36,12 @@ function ensureRenderer() {
   camera = new THREE.PerspectiveCamera(30, 1, 0.9, 10);
   camera.position.set(3, 1.8, 2.35);
   camera.lookAt(0, -0.1, 0);
+
+  // Un item est un sprite plat : vu sous l'angle 3/4 des blocs il serait quasi invisible
+  // (par la tranche), d'où une caméra de face dédiée.
+  itemCamera = new THREE.PerspectiveCamera(30, 1, 0.1, 10);
+  itemCamera.position.set(0, 0, 2.1);
+  itemCamera.lookAt(0, 0, 0);
 }
 
 // TextureLoader charge en arrière-plan (async) — si on bake une icône avant que la
@@ -60,14 +67,17 @@ export function getBlockIconDataURL(blockId, blockRegistry, materials) {
   ensureRenderer();
 
   const mat = materials.get(blockId);
-  const texturesReady =
-    isTextureReady(mat?.side?.map) && isTextureReady(mat?.top?.map) && isTextureReady(mat?.bottom?.map);
+  const isItem = blockRegistry.isItem(blockId);
+  // Un item n'a qu'un matériau : exiger top/bottom empêcherait sa mise en cache.
+  const texturesReady = isItem
+    ? isTextureReady(mat?.side?.map)
+    : isTextureReady(mat?.side?.map) && isTextureReady(mat?.top?.map) && isTextureReady(mat?.bottom?.map);
 
   const group = createPrismItemGroup(blockId, materials, blockRegistry, Orientation.UP);
   group.position.y = -BLOCK_HEIGHT / 2; // centre le prisme verticalement dans le cadre
-  group.rotation.y = 3
+  if (!isItem) group.rotation.y = 3;
   scene.add(group);
-  renderer.render(scene, camera);
+  renderer.render(scene, isItem ? itemCamera : camera);
   const url = renderer.domElement.toDataURL("image/png");
   scene.remove(group); // la géométrie/matériaux restent partagés — ne rien disposer ici
 

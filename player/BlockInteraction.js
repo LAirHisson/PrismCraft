@@ -69,6 +69,11 @@ export function setupBlockInteraction({
       // Sable/gravier au-dessus : la colonne retombe.
       worldManager.settleGravityAbove(block.col, block.row, block.height);
       highlight.hide();
+    } else if (e.button === 1) {
+      // Molette : "pick block" — le bloc visé passe en main.
+      e.preventDefault(); // sinon Chrome arme son défilement automatique
+      const target = worldManager.getBlock(block.col, block.row, block.height);
+      if (target) inventory.pickBlock(target.blockId, { creative: !gameMode?.isSurvival() });
     } else if (e.button === 2) {
       // Clic droit sur un bloc "interactif" (ex. crafting table) → ouvre sa grille.
       const target = worldManager.getBlock(block.col, block.row, block.height);
@@ -79,6 +84,10 @@ export function setupBlockInteraction({
       }
 
       const blockId = inventory.selectedBlockId;
+
+      // Un item n'a pas de forme posable dans la grille — mais le clic droit sur un
+      // bloc interactif (table de craft, traité au-dessus) doit rester possible.
+      if (blockId !== null && blockRegistry.isItem(blockId)) return;
 
       // Double slab : viser la moitié vide d'un slab identique déjà posé → bloc plein.
       if (

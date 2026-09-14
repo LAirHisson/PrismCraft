@@ -199,6 +199,47 @@ export class Inventory {
     return remaining;
   }
 
+  // Clic molette sur un bloc du monde : le met en main, façon "pick block".
+  // Déjà dans la hotbar → on sélectionne ce slot ; ailleurs dans l'inventaire → on
+  // l'échange avec le slot tenu ; absent → créatif seulement (en survie, on ne
+  // fabrique rien à partir de rien). Retourne false si rien n'a bougé.
+  pickBlock(blockId, { creative = false } = {}) {
+    const find = (from, to) => {
+      for (let i = from; i < to; i++) if (this.slots[i]?.blockId === blockId) return i;
+      return -1;
+    };
+
+    const inHotbar = find(0, HOTBAR_SIZE);
+    if (inHotbar >= 0) {
+      this.selectHotbar(inHotbar);
+      return true;
+    }
+
+    const inStorage = find(HOTBAR_SIZE, this.slots.length);
+    if (inStorage >= 0) {
+      this.exchange(this.selectedHotbarSlot, inStorage);
+      return true;
+    }
+
+    if (!creative) return false;
+
+    const free = this.slots.findIndex((s, i) => i < HOTBAR_SIZE && s == null);
+    if (free >= 0) {
+      this.setSlot(free, { blockId, count: 1 });
+      this.selectHotbar(free);
+      return true;
+    }
+
+    // Hotbar pleine : le slot tenu cède la place, son contenu repart dans l'inventaire
+    // (et disparaît s'il est plein lui aussi — on est en créatif, la ressource est gratuite).
+    const i = this.selectedHotbarSlot;
+    const previous = this.slots[i];
+    this.slots[i] = { blockId, count: 1 };
+    if (previous) this.addItem(previous.blockId, previous.count);
+    this._emit();
+    return true;
+  }
+
   // Retire une unité du slot (clear à 0).
   removeOne(i) {
     const s = this.slots[i];

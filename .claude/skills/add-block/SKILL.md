@@ -27,6 +27,10 @@ Lis ce fichier avant de commencer — il couvre le format exact de
    matériaux automatiquement au démarrage. Ne pas toucher à `BlockRegistry.js` sauf
    pour ajouter un getter dédié à une propriété nouvelle (voir le guide).
 
+Pour un **item** (bâton, outil, ressource — ce qui ne se pose pas), c'est
+`public/data/items.json`, une texture 32×16 dans `assets/textures/items/`, et des
+plages d'id par famille : voir la section « Ajouter un item » du guide.
+
 ## Vérifier
 
 `npm run dev`, ouvrir l'inventaire (E), passer en créatif si besoin (menu Tab →

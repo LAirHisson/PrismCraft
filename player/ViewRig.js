@@ -3,7 +3,7 @@
 // le joueur", séparé du reste du bootstrap dans main.js.
 import * as THREE from "three";
 import { loadPlayerModel } from "./PlayerModel.js";
-import { createPrismItemGroup } from "../rendering/PrismGeometryHelpers.js";
+import { createPrismItemGroup, ITEM_HEIGHT } from "../rendering/PrismGeometryHelpers.js";
 import { createCrosshair } from "../ui/Crosshair.js";
 
 const FP_ARM_POS = new THREE.Vector3(0.6, -0.4, -0.5);
@@ -12,6 +12,10 @@ const FP_ARM_ROT = new THREE.Euler(1.6, 0.3, 0);
 const HELD_BLOCK_POS = new THREE.Vector3(0.02, -0.8, 0.2);
 const HELD_BLOCK_ROT = new THREE.Euler(Math.PI+2, 1, 0);
 const HELD_BLOCK_SCALE = 0.45;
+
+const HELD_ITEM_POS = new THREE.Vector3(-0.01, -0.7, -0.4);
+const HELD_ITEM_ROT = new THREE.Euler(Math.PI / 2.3, Math.PI / 0.7, 0.2);
+const HELD_ITEM_SCALE = 0.7;
 
 const THIRD_PERSON_DIST = 3.5;
 
@@ -39,16 +43,28 @@ export async function createViewRig({ camera, worldRoot, inventory, materials, b
   // Bloc tenu en main : accroché à l'os du bras (pas à fpArm) → suit l'animation de
   // balancement et le bon parent (fpArm en 1ère personne, squelette en 3e) automatiquement.
   const heldItemGroup = new THREE.Group();
-  heldItemGroup.position.copy(HELD_BLOCK_POS);
-  heldItemGroup.rotation.copy(HELD_BLOCK_ROT);
-  heldItemGroup.scale.setScalar(HELD_BLOCK_SCALE);
   rightArm.add(heldItemGroup);
 
   function updateHeldItem() {
     heldItemGroup.clear(); // retire l'ancien mesh — géométrie/matériaux partagés, rien à disposer
     const blockId = inventory.selectedBlockId;
     heldItemGroup.visible = blockId !== null;
-    if (blockId !== null) heldItemGroup.add(createPrismItemGroup(blockId, materials, blockRegistry));
+    if (blockId === null) return;
+
+    const isItem = blockRegistry.isItem(blockId);
+    heldItemGroup.position.copy(isItem ? HELD_ITEM_POS : HELD_BLOCK_POS);
+    heldItemGroup.rotation.copy(isItem ? HELD_ITEM_ROT : HELD_BLOCK_ROT);
+    heldItemGroup.scale.setScalar(isItem ? HELD_ITEM_SCALE : HELD_BLOCK_SCALE);
+    const model = createPrismItemGroup(blockId, materials, blockRegistry);
+    if (isItem) {
+      // Les textures d'items se dessinent tête en haut à droite, manche en bas à gauche
+      // (sens correct dans l'inventaire) ; en main c'est le manche qu'on tient. Demi-tour
+      // dans le plan du sprite autour de son centre : la boîte englobante ne bouge pas,
+      // donc les réglages HELD_ITEM_* restent valables.
+      model.rotation.z = Math.PI;
+      model.position.y = ITEM_HEIGHT;
+    }
+    heldItemGroup.add(model);
   }
   inventory.onChange(updateHeldItem);
   updateHeldItem();
