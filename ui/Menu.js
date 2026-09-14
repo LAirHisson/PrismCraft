@@ -200,6 +200,18 @@ export class Menu {
     settings.style.display = "none";
     this._views = { main, settings };
 
+    // Clic à côté du panneau (fond assombri) = reprendre, comme le bouton du même nom.
+    backdrop.addEventListener(
+      "mousedown",
+      (e) => {
+        if (e.target !== backdrop) return;
+        e.preventDefault();
+        this.onResume?.(); // reverrouille la souris → l'événement "lock" ferme le menu
+        this.close();
+      },
+      { capture: true },
+    );
+
     backdrop.append(main, settings);
     document.body.appendChild(backdrop);
     this._backdrop = backdrop;

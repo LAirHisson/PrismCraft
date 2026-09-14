@@ -344,6 +344,21 @@ export class InventoryUI {
     });
     this._content.addEventListener("contextmenu", (e) => e.preventDefault());
 
+    // Clic à côté de l'interface (fond assombri) = fermer. On reverrouille la souris
+    // nous-mêmes : le fond couvre le canvas, donc son écouteur de clic ne voit rien.
+    // En capture, donc AVANT le handler des cases : celui-ci reconstruit le panneau,
+    // ce qui détache la case cliquée et la ferait passer pour un clic hors interface.
+    this._backdrop.addEventListener(
+      "mousedown",
+      (e) => {
+        if (this._content.contains(e.target) || this._tabs.contains(e.target)) return;
+        e.preventDefault();
+        this.close();
+        this.cameraController.controls.lock();
+      },
+      { capture: true },
+    );
+
     document.addEventListener("mousemove", (e) => {
       if (this._open && this.inventory.cursor) {
         this._ghost.style.left = `${e.clientX}px`;
