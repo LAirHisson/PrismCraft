@@ -153,14 +153,13 @@ installBrowserGuards();
     if (e.button === 0) mining.setHeld(false);
   });
 
-  // F1 : masque HUD (viseur + hotbar + cœurs) et la main du joueur
+  // F1 : masque HUD (viseur + hotbar + cœurs + chat) et la main du joueur
   document.addEventListener("keydown", (e) => {
     if (e.code !== "F1") return;
     e.preventDefault();
     const hidden = viewRig.toggleHud();
     hotbar.setVisible(!hidden);
     hud.setVisible(!hidden && gameMode.isSurvival());
-    // Masque aussi le chat si on retire le HUD
     chat.container.style.display = hidden ? "none" : "flex";
   });
 
@@ -185,7 +184,7 @@ installBrowserGuards();
     debug.update(dt);
     waterOverlay.setVisible(playerController.isHeadInWater());
 
-    // Le jeu ne se met à jour que si l'inventaire, le menu ET le chat sont fermés
+
     if (!inventoryUI.isOpen() && !menu.isOpen() && !chat.isOpen()) {
       playerController.update(dt);
       mining.update(dt);
