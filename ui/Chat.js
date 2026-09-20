@@ -1,3 +1,5 @@
+const MESSAGE_LIFETIME_MS = 10000;
+
 export class Chat {
   constructor(onCommand, onOpen, onClose) {
     this.onCommand = onCommand;
@@ -22,9 +24,10 @@ export class Chat {
     // Historique des messages
     this.history = document.createElement("div");
     this.history.style.cssText = `
-      max-height: 250px; overflow-y: hidden; display: flex;
-      flex-direction: column; justify-content: flex-end;
+      max-height: 250px; overflow-y: auto; display: flex;
+      flex-direction: column;
       color: white; text-shadow: 1px 1px 0 #000; font-size: 14px;
+      scrollbar-width: thin; scrollbar-color: #8B8B8B transparent;
     `;
 
     // case de saisie
@@ -136,11 +139,33 @@ export class Chat {
     msg.style.color = color;
     this.history.appendChild(msg);
     if (this.history.children.length > 50) this.history.firstChild.remove();
+    this.history.scrollTop = this.history.scrollHeight;
+
+    // Un message expiré reste dans l'historique, seulement masqué : rouvrir le chat le
+    // réaffiche. Le chat ouvert ne masque rien, d'où le report à sa fermeture.
+    msg.dataset.expired = "false";
+    setTimeout(() => {
+      msg.dataset.expired = "true";
+      if (!this.isOpen()) msg.style.display = "none";
+    }, MESSAGE_LIFETIME_MS);
+  }
+
+  _showAllMessages() {
+    for (const msg of this.history.children) msg.style.display = "";
+    this.history.scrollTop = this.history.scrollHeight;
+  }
+
+  _hideExpiredMessages() {
+    for (const msg of this.history.children) {
+      if (msg.dataset.expired === "true") msg.style.display = "none";
+    }
   }
 
   open(prefix = "") {
     this.input.style.display = "block";
     this.input.value = prefix;
+    this._showAllMessages();
+    this.history.style.pointerEvents = "auto"; // molette = défilement, pas changement de slot
     // Prépare l'historique
     this.historyIndex = this.commandHistory.length;
     this.currentTyped = prefix;
@@ -155,6 +180,8 @@ export class Chat {
     this.input.style.display = "none";
     this.input.value = "";
     this.input.blur();
+    this._hideExpiredMessages();
+    this.history.style.pointerEvents = "none";
     this.onClose();
   }
 
