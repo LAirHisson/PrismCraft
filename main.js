@@ -11,11 +11,16 @@ import { SaveManager } from "./core/SaveManager.js";
 import { RenderOrigin } from "./rendering/RenderOrigin.js";
 import { createSunShadowTracker } from "./rendering/SunShadowTracker.js";
 import { installBrowserGuards } from "./core/BrowserGuards.js";
-import { installDevConsole } from "./core/DevConsole.js";
 import { createGameSystems } from "./core/GameSystems.js";
 import { createMenuAndSave } from "./core/MenuAndSave.js";
 import { createViewRig } from "./player/ViewRig.js";
 import { createFootstepPlayer } from "./player/Footsteps.js";
+import { StructureManager } from "./core/StructureManager.js";
+
+// --- Nouveaux imports pour le Chat et les Commandes ---
+import { Chat } from "./ui/Chat.js";
+import { CommandManager } from "./core/CommandManager.js";
+import { inputManager } from "./core/InputManager.js";
 
 const { scene, worldRoot, camera, renderer, skyRenderer, sunLight, cameraController } =
   createScene();
@@ -48,7 +53,36 @@ installBrowserGuards();
     blockRegistry, materials, craftingSystem, existingSave, seed,
   });
 
-  installDevConsole(playerController, inventory);
+  // --- INITIALISATION DU CHAT ET COMMANDES ---
+  const chat = new Chat(
+    (cmd) => {
+      // On délègue l'exécution de la commande au CommandManager
+      commandManager.execute(cmd);
+    },
+    () => {
+      cameraController.controls.unlock();
+      inputManager.releaseAll();
+    },
+    () => cameraController.controls.lock()
+  );
+
+ const structureManager = new StructureManager(blockRegistry, chat); 
+
+  const commandManager = new CommandManager(chat, { 
+    playerController, 
+    gameMode, 
+    inventory, 
+    worldManager,
+    blockRegistry,
+    structureManager,
+    chunkManager
+  });
+
+  // Sécurité : fermer le chat si on relock le pointeur de force (clic sur le jeu)
+  cameraController.controls.addEventListener("lock", () => {
+    if (chat.isOpen()) chat.close();
+  });
+  // -------------------------------------------
 
   const viewRig = await createViewRig({ camera, worldRoot, inventory, materials, blockRegistry });
 
@@ -70,6 +104,15 @@ installBrowserGuards();
 
   // Les deux écrans s'excluent : Tab teste déjà l'inventaire, E teste le menu.
   inventoryUI.canOpen = () => !menu.isOpen();
+  // Touche T (chat) ou / (commande)
+  document.addEventListener("keydown", (e) => {
+    if (e.code === "KeyT" || e.code === "Slash") {
+      if (!cameraController.isLocked() || inventoryUI.isOpen() || menu.isOpen() || chat.isOpen()) return;
+      
+      e.preventDefault();
+      chat.open(e.code === "Slash" ? "/" : "");
+    }
+  });
 
   document.addEventListener("keydown", (e) => {
     if (e.code !== "Tab") return;
@@ -93,7 +136,7 @@ installBrowserGuards();
   // Freecam (P) : sort la caméra du corps, qui garde sa position.
   document.addEventListener("keydown", (e) => {
     if (e.code !== "KeyP") return;
-    if (!cameraController.isLocked() || inventoryUI.isOpen() || menu.isOpen()) return;
+    if (!cameraController.isLocked() || inventoryUI.isOpen() || menu.isOpen() || chat.isOpen()) return;
     e.preventDefault();
     const enabling = !playerController.freecam;
     playerController.setFreecam(enabling);
@@ -117,13 +160,14 @@ installBrowserGuards();
   // le minage resterait actif au retour — même raison que inputManager.releaseAll().
   window.addEventListener("blur", () => mining.setHeld(false));
 
-  // F1 : masque HUD (viseur + hotbar + cœurs) et la main du joueur
+  // F1 : masque HUD (viseur + hotbar + cœurs + chat) et la main du joueur
   document.addEventListener("keydown", (e) => {
     if (e.code !== "F1") return;
     e.preventDefault();
     const hidden = viewRig.toggleHud();
     hotbar.setVisible(!hidden);
     hud.setVisible(!hidden && gameMode.isSurvival());
+    chat.container.style.display = hidden ? "none" : "flex";
   });
 
   // Applique l'état de mode persistant (déclenche clamp inventaire, HUD…)
@@ -147,7 +191,8 @@ installBrowserGuards();
     debug.update(dt);
     waterOverlay.setVisible(playerController.isHeadInWater());
 
-    if (!inventoryUI.isOpen() && !menu.isOpen()) {
+
+    if (!inventoryUI.isOpen() && !menu.isOpen() && !chat.isOpen()) {
       playerController.update(dt);
       mining.update(dt);
       damage.update(dt);
