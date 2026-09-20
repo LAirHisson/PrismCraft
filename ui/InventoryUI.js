@@ -1,7 +1,6 @@
 import { HOTBAR_SIZE, INV_COLS, INV_ROWS } from "../player/Inventory.js";
-import { triClip, createTriBorder, itemBackground } from "./triSlot.js";
+import { triClip, createTriBorder, createItemIcon, setItemIcon, ICON_OVERFLOW } from "./triSlot.js";
 import { i18n } from "../core/I18n.js";
-import { getBlockIconDataURL } from "../rendering/BlockIconRenderer.js";
 
 const SCALE = 2;
 const PANEL_BG = "#C6C6C6";
@@ -19,6 +18,13 @@ const ROW_STEP = H + ROW_GAP;   // pas vertical d'une ligne à l'autre
 
 const PERSONAL_CRAFT = { zone: "craft", cols: 2, rows: 2 };
 
+// Palette créative : au-delà de 3 lignes elle mangerait l'écran, on la borne et on scrolle.
+const PALETTE_MAX_ROWS = 3;
+const SCROLLBAR_W = 7 * SCALE;
+// Marge haut/bas pour que les icônes, plus grandes que leur case, ne soient pas
+// rognées par le bord de la zone de défilement.
+const ICON_BLEED = Math.round(((ICON_OVERFLOW - 1) / 2) * H);
+
 export class InventoryUI {
   constructor(inventory, blockRegistry, cameraController, craftingSystem, gameMode, materials) {
     this.inventory = inventory;
@@ -29,9 +35,9 @@ export class InventoryUI {
     this.gameMode = gameMode;
 
     this._open = false;
-    this._tab = "inventory"; // "inventory" | "give" (give = créatif seulement)
-    this._table = false;     // true = écran d'une crafting table (grille N×N)
-    this._craft = PERSONAL_CRAFT;
+    this._tab = "inventory";
+    this._table = false; 
+    this.canOpen = () => true; // remplacé par main.js : pas d'ouverture par-dessus le menu pause
 
     this._buildDOM();
     this._bindEvents();
@@ -125,7 +131,8 @@ export class InventoryUI {
     document.body.appendChild(backdrop);
     this._backdrop = backdrop;
 
-    // Objet tenu au curseur (suit la souris) — triangle clippé + compteur hors clip
+    // Objet tenu au curseur (suit la souris) — pas de case sous l'icône (rien à
+    // "déborder"), donc juste l'icône 3D non clippée + compteur.
     const ghost = document.createElement("div");
     ghost.style.cssText = `
       position: fixed; display: none;
@@ -134,14 +141,7 @@ export class InventoryUI {
       pointer-events: none;
       z-index: 300;
     `;
-    const ghostTri = document.createElement("div");
-    ghostTri.style.cssText = `
-      position: absolute; top: 0; left: 0;
-      width: ${B}px; height: ${H}px;
-      clip-path: ${triClip(true)};
-      background-size: cover; background-repeat: no-repeat;
-      image-rendering: pixelated;
-    `;
+    const ghostIcon = createItemIcon(B, H);
     const ghostCount = document.createElement("span");
     ghostCount.style.cssText = `
       position: absolute; bottom: ${1 * SCALE}px; left: 50%;
@@ -149,12 +149,25 @@ export class InventoryUI {
       color: #fff; font-size: ${COUNT_FONT}px; font-weight: bold;
       text-shadow: 0 1px 2px #000;
     `;
-    ghost.appendChild(ghostTri);
+    ghost.appendChild(ghostIcon);
     ghost.appendChild(ghostCount);
     document.body.appendChild(ghost);
     this._ghost = ghost;
-    this._ghostTri = ghostTri;
+    this._ghostIcon = ghostIcon;
     this._ghostCount = ghostCount;
+    this._pointer = { x: 0, y: 0 };
+  }
+
+  /**
+   * Mémorise le dernier point connu du pointeur et y place le fantôme. Suivi même quand
+   * le curseur est vide : sinon un item pris sans bouger la souris (craft, clic) s'affiche
+   * à l'endroit du dernier item tenu jusqu'au prochain mousemove.
+   */
+  _setPointer(e) {
+    this._pointer.x = e.clientX;
+    this._pointer.y = e.clientY;
+    this._ghost.style.left = `${e.clientX}px`;
+    this._ghost.style.top = `${e.clientY}px`;
   }
 
   // (Re)construit onglets (au-dessus, créatif hors table) + module haut + stockage + hotbar.
@@ -165,9 +178,11 @@ export class InventoryUI {
     this._buildTabs(tabsShown);
 
     this._content.textContent = "";
-    this._content.appendChild(
-      this._tab === "give" ? this._buildPalette() : this._buildCraftModule(),
-    );
+    const top = this._tab === "give" ? this._buildPalette() : this._buildCraftModule();
+    this._content.appendChild(top);
+    // Prendre un bloc rafraîchit tout le panneau : sans ça la palette se remettrait
+    // en haut à chaque clic. Le scrollTop ne tient qu'une fois l'élément dans le DOM.
+    if (this._tab === "give") top.scrollTop = this._paletteScroll;
     this._content.appendChild(this._buildGrid("storage", INV_COLS, INV_ROWS));
     this._content.appendChild(this._buildGrid("hotbar", HOTBAR_SIZE, 1));
   }
@@ -218,7 +233,21 @@ export class InventoryUI {
         }),
       );
     });
-    return grid;
+
+    const view = document.createElement("div");
+    view.style.cssText = `
+      width: ${this._stripWidth(cols) + SCROLLBAR_W}px;
+      max-height: ${PALETTE_MAX_ROWS * H + (PALETTE_MAX_ROWS - 1) * ROW_GAP + 2 * ICON_BLEED}px;
+      overflow-y: auto; overflow-x: hidden;
+      padding: ${ICON_BLEED}px 0;
+      scrollbar-width: thin;
+      scrollbar-color: ${SLOT_FILL} ${PANEL_BG};
+    `;
+    view.addEventListener("scroll", () => {
+      this._paletteScroll = view.scrollTop;
+    });
+    view.appendChild(grid);
+    return view;
   }
 
   _craftGrid() {
@@ -287,22 +316,21 @@ export class InventoryUI {
     wrap.dataset.index = String(index);
 
     const tri = document.createElement("div");
-    let bg = SLOT_FILL;
-    if (blockId !== null) {
-      const url = getBlockIconDataURL(blockId, this.blockRegistry, this.materials);
-      bg = itemBackground(url, SLOT_FILL, this.blockRegistry.getShape(blockId) === "slab");
-    }
     tri.style.cssText = `
       position: absolute; top: 0; left: 0;
       width: ${B}px; height: ${H}px;
       clip-path: ${triClip(isUp)};
-      background: ${bg};
+      background: ${SLOT_FILL};
       image-rendering: pixelated;
       cursor: ${blockId !== null ? "grab" : "default"};
     `;
 
+    const icon = createItemIcon(B, H);
+    setItemIcon(icon, blockId, this.blockRegistry, this.materials);
+
     wrap.appendChild(tri);
     wrap.appendChild(createTriBorder(isUp, B, H, BORDER_THICK));
+    wrap.appendChild(icon);
 
     if (slot && slot.count > 1) {
       const count = document.createElement("span");
@@ -325,25 +353,31 @@ export class InventoryUI {
       return;
     }
     this._ghost.style.display = "block";
-    this._ghostTri.style.backgroundImage = `url("${getBlockIconDataURL(cur.blockId, this.blockRegistry, this.materials)}")`;
+    this._ghost.style.left = `${this._pointer.x}px`;
+    this._ghost.style.top = `${this._pointer.y}px`;
+    setItemIcon(this._ghostIcon, cur.blockId, this.blockRegistry, this.materials);
     this._ghostCount.textContent = cur.count > 1 ? cur.count : "";
   }
 
   _bindEvents() {
     document.addEventListener("keydown", (e) => {
-      if (e.code === "KeyE" && !e.repeat) this.toggle();
+      if (e.code === "KeyE" && !e.repeat && (this._open || this.canOpen())) this.toggle();
       else if (e.code === "Escape" && this._open) this.close();
     });
 
     // Clic gauche = prendre/poser, clic droit = moitié/poser 1.
     this._content.addEventListener("mousedown", (e) => {
+      this._setPointer(e); // clic sans mouvement préalable (inventaire ouvert au clavier)
       const cell = e.target.closest("[data-zone]");
       if (!cell) return;
       e.preventDefault();
       const zone = cell.dataset.zone;
       const i = Number(cell.dataset.index);
       if (zone === "palette") {
-        if (e.button === 0) this.inventory.addItem(i, e.shiftKey ? 64 : 1); // i = blockId
+        // i = blockId
+        if (e.button === 0) {
+          this.inventory.addItem(i, e.shiftKey ? this.blockRegistry.getMaxStack(i) : 1);
+        }
       } else if (zone === "result") {
         if (e.button === 0) this._takeResult(e.shiftKey);
       } else if (e.button === 0 && e.shiftKey) this.inventory.quickMove(zone, i);
@@ -352,11 +386,23 @@ export class InventoryUI {
     });
     this._content.addEventListener("contextmenu", (e) => e.preventDefault());
 
+    // Clic à côté de l'interface (fond assombri) = fermer. On reverrouille la souris
+    // nous-mêmes : le fond couvre le canvas, donc son écouteur de clic ne voit rien.
+    // En capture, donc AVANT le handler des cases : celui-ci reconstruit le panneau,
+    // ce qui détache la case cliquée et la ferait passer pour un clic hors interface.
+    this._backdrop.addEventListener(
+      "mousedown",
+      (e) => {
+        if (this._content.contains(e.target) || this._tabs.contains(e.target)) return;
+        e.preventDefault();
+        this.close();
+        this.cameraController.controls.lock();
+      },
+      { capture: true },
+    );
+
     document.addEventListener("mousemove", (e) => {
-      if (this._open && this.inventory.cursor) {
-        this._ghost.style.left = `${e.clientX}px`;
-        this._ghost.style.top = `${e.clientY}px`;
-      }
+      if (this._open) this._setPointer(e);
     });
   }
 }

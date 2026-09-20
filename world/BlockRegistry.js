@@ -108,6 +108,27 @@ export class BlockRegistry {
   }
 
   /**
+   * Type d'outil : sur un bloc, l'outil qui le casse plus vite ; sur un item, le type
+   * d'outil qu'il est. Même clé des deux côtés pour que la correspondance soit une
+   * simple égalité. `null` = aucun.
+   * @param {number} blockId
+   * @returns {string|null} ex. 'pickaxe'
+   */
+  getTool(blockId) {
+    return this.getBlock(blockId)?.tool ?? null;
+  }
+
+  /**
+   * Multiplicateur de vitesse de minage d'un outil, appliqué seulement aux blocs qui
+   * demandent ce type d'outil (1 = main nue).
+   * @param {number} blockId
+   * @returns {number}
+   */
+  getToolSpeed(blockId) {
+    return this.getBlock(blockId)?.toolSpeed ?? 1;
+  }
+
+  /**
    * Récupère le type de son du bloc (pour l'audio SFX).
    * @param {number} blockId
    * @returns {string} 'stone', 'gravel', 'grass', 'wood', etc.
@@ -148,12 +169,32 @@ export class BlockRegistry {
   }
 
   /**
-   * Forme géométrique du bloc : 'prism' (défaut) ou 'plant' (3 lames en croix).
+   * Forme géométrique : 'prism' (défaut), 'plant' (3 lames en croix), 'slab'
+   * (demi-bloc) ou 'item' (texture de 512 triangles épaissie en 3D, jamais posé dans le monde).
    * @param {number} blockId
-   * @returns {'prism'|'plant'}
+   * @returns {'prism'|'plant'|'slab'|'item'}
    */
   getShape(blockId) {
     return this.getBlock(blockId)?.shape ?? 'prism';
+  }
+
+  /**
+   * Vrai pour une entrée d'items.json : elle se craft, se stocke et se tient en main,
+   * mais ne se pose pas — les appelants qui placent des blocs doivent la refuser.
+   * @param {number} blockId
+   * @returns {boolean}
+   */
+  isItem(blockId) {
+    return this.getShape(blockId) === 'item';
+  }
+
+  /**
+   * Fichier de texture d'un item (dossier assets/textures/items/).
+   * @param {number} blockId
+   * @returns {string}
+   */
+  getItemTexture(blockId) {
+    return this.getBlock(blockId)?.texture ?? 'stick.png';
   }
 
   /**
@@ -242,14 +283,33 @@ export class BlockRegistry {
 }
 
 /**
- * Charge le catalogue JSON depuis data/blocks.json.
+ * Charge le catalogue JSON depuis data/blocks.json + data/items.json.
+ *
+ * Blocs et items vivent dans le MÊME registre : un item n'est qu'une entrée avec
+ * `"shape": "item"`. Tout le reste du jeu (inventaire, hotbar, craft, sauvegarde)
+ * manipule donc un id unique sans avoir à distinguer les deux, et résout par nom —
+ * d'où zéro changement dans ces systèmes. Les ids d'items commencent à 1000 par
+ * convention pour ne jamais entrer en collision avec ceux des blocs.
+ *
  * @returns {Promise<BlockRegistry>}
  */
 export async function loadBlockRegistry() {
-  const response = await fetch('data/blocks.json');
-  if (!response.ok) {
-    throw new Error(`Failed to load blocks.json: ${response.statusText}`);
+  const [blocksRes, itemsRes] = await Promise.all([
+    fetch('data/blocks.json'),
+    fetch('data/items.json'),
+  ]);
+  if (!blocksRes.ok) {
+    throw new Error(`Failed to load blocks.json: ${blocksRes.statusText}`);
   }
-  const { blocks } = await response.json();
-  return new BlockRegistry(blocks);
+  const { blocks } = await blocksRes.json();
+
+  // items.json est optionnel : son absence ne doit pas empêcher le jeu de démarrer.
+  let items = [];
+  if (itemsRes.ok) {
+    ({ items = [] } = await itemsRes.json());
+  } else {
+    console.warn('[BlockRegistry] items.json introuvable — aucun item chargé.');
+  }
+
+  return new BlockRegistry([...blocks, ...items]);
 }

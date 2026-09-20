@@ -8,13 +8,43 @@ import { applyRemapShader } from './RemapShaderChunk.js';
 
 const loader = new THREE.TextureLoader();
 const BASE_PATH = 'assets/textures/blocks/';
+const ITEM_PATH = 'assets/textures/items/';
 
-function loadTexture(filename) {
-  const texture = loader.load(BASE_PATH + filename);
+function configureTexture(texture) {
   texture.magFilter = THREE.NearestFilter;
   texture.minFilter = THREE.NearestFilter;
   texture.colorSpace = THREE.SRGBColorSpace;
   return texture;
+}
+
+function loadTexture(filename) {
+  return configureTexture(loader.load(BASE_PATH + filename));
+}
+
+/**
+ * Texture d'item chargée de façon ATTENDUE (loadAsync) : la géométrie 3D d'un item est
+ * construite à partir de ses pixels, qui doivent donc être disponibles avant le premier
+ * rendu. Une texture introuvable ne bloque pas le démarrage — l'item sera juste invisible.
+ */
+async function loadItemTexture(filename) {
+  try {
+    return configureTexture(await loader.loadAsync(ITEM_PATH + filename));
+  } catch (err) {
+    console.warn(`[PrismMaterial] texture d'item introuvable : ${filename}`, err);
+    return null;
+  }
+}
+
+/**
+ * Matériau d'un item : sa géométrie ne contient que les triangles opaques de la texture
+ * (voir createItemGeometry), déjà fermée et orientée — ni transparence ni double face.
+ */
+function createItemMaterial(texture) {
+  return new THREE.MeshStandardMaterial({
+    map: texture,
+    metalness: 0.0,
+    roughness: 0.8,
+  });
 }
 
 function createMaterial(texture, mode = "opaque", remap = false) {
@@ -66,8 +96,18 @@ export async function loadPrismMaterials(blockRegistry) {
     return materialCache.get(key);
   };
 
+  const ids = blockRegistry.getAllBlockIds();
+  const itemFiles = [...new Set(ids.filter((id) => blockRegistry.isItem(id)).map((id) => blockRegistry.getItemTexture(id)))];
+  const itemTextures = await Promise.all(itemFiles.map(loadItemTexture));
+  const itemMaterials = new Map(itemFiles.map((f, i) => [f, createItemMaterial(itemTextures[i])]));
+
   const materials = new Map();
-  for (const id of blockRegistry.getAllBlockIds()) {
+  for (const id of ids) {
+    // Un item n'a qu'un matériau : pas de calotte haut/bas à distinguer.
+    if (blockRegistry.isItem(id)) {
+      materials.set(id, { side: itemMaterials.get(blockRegistry.getItemTexture(id)) });
+      continue;
+    }
     const mode = blockRegistry.getMaterialMode(id);
     materials.set(id, {
       side: getMaterial(blockRegistry.getTextureSide(id), mode),
@@ -76,6 +116,6 @@ export async function loadPrismMaterials(blockRegistry) {
     });
   }
 
-  console.log(`[PrismMaterial] ${materials.size} blocs chargés`);
+  console.log(`[PrismMaterial] ${materials.size} entrées chargées (blocs + items)`);
   return materials;
 }

@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(node test-icon-drag.mjs http://localhost:5174)",
+      "Bash(node --check player/MiningController.js)"
     ]
   }
 }

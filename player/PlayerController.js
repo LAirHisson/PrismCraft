@@ -24,7 +24,6 @@ const _UP = new THREE.Vector3(0, 1, 0);
 const _fwd = new THREE.Vector3();
 const _rightV = new THREE.Vector3();
 const _newPos = new THREE.Vector3();
-const _stepPos = new THREE.Vector3();
 const _vertMove = new THREE.Vector3();
 const _groundPos = new THREE.Vector3();
 
@@ -36,6 +35,16 @@ for (let k = 0; k < 6; k++) {
 const _hex = [];
 for (let k = 0; k < 6; k++) _hex.push({ x: 0, z: 0 });
 const _prism = { verts: [{ x: 0, z: 0 }, { x: 0, z: 0 }, { x: 0, z: 0 }], y0: 0, y1: 0 };
+
+// Normales unitaires (XZ) des arêtes en jeu : celles des prismes ET de l'hexagone du
+// joueur sont toutes parallèles à 0°/60°/120°, donc ces 3 axes suffisent à un SAT exact.
+const SAT_AXES = [30, 90, 150].map((deg) => ({
+  x: Math.cos((deg * Math.PI) / 180),
+  z: Math.sin((deg * Math.PI) / 180),
+}));
+const _hit = { t: Infinity, axis: SAT_AXES[0], speed: 0 };
+const SLIDE_PASSES = 3; // un coin = deux murs heurtés dans le même pas
+const CONTACT_SKIN = 1e-4;
 
 /** Remplit l'empreinte hexagonale (XZ) du joueur (circumrayon r) dans `_hex`. */
 function fillHex(cx, cz, r) {
@@ -93,6 +102,57 @@ function _axisSeparates(edges, a, b) {
 /** SAT 2D : true si deux polygones convexes se chevauchent (contact ⇒ pas de collision). */
 function polyOverlap(a, b) {
   return !_axisSeparates(a, a, b) && !_axisSeparates(b, a, b);
+}
+
+/**
+ * SAT balayé : `a` se déplace de (dx, dz) vers `b` immobile. Si le contact survient
+ * avant `hit.t`, met à jour `hit` (instant ∈ [0, 1], axe de contact, vitesse d'approche
+ * sur cet axe) et renvoie true. Un `a` déjà imbriqué dans `b` est ignoré : le joueur
+ * peut en sortir au lieu de rester coincé.
+ */
+function sweepPolys(a, b, dx, dz, hit) {
+  let tEnter = -Infinity;
+  let tExit = Infinity;
+  let axis = null;
+  let speed = 0;
+  for (const n of SAT_AXES) {
+    let minA = Infinity, maxA = -Infinity, minB = Infinity, maxB = -Infinity;
+    for (let j = 0; j < a.length; j++) {
+      const d = a[j].x * n.x + a[j].z * n.z;
+      if (d < minA) minA = d;
+      if (d > maxA) maxA = d;
+    }
+    for (let j = 0; j < b.length; j++) {
+      const d = b[j].x * n.x + b[j].z * n.z;
+      if (d < minB) minB = d;
+      if (d > maxB) maxB = d;
+    }
+    const v = dx * n.x + dz * n.z;
+    let t0, t1;
+    if (maxA <= minB) {
+      if (v <= 0) return false;
+      t0 = (minB - maxA) / v;
+      t1 = (maxB - minA) / v;
+    } else if (maxB <= minA) {
+      if (v >= 0) return false;
+      t0 = (maxB - minA) / v;
+      t1 = (minB - maxA) / v;
+    } else {
+      t0 = -Infinity;
+      t1 = v > 0 ? (maxB - minA) / v : v < 0 ? (minB - maxA) / v : Infinity;
+    }
+    if (t0 > tEnter) {
+      tEnter = t0;
+      axis = n;
+      speed = v;
+    }
+    if (t1 < tExit) tExit = t1;
+  }
+  if (tEnter < 0 || tEnter > 1 || tEnter >= tExit || tEnter >= hit.t) return false;
+  hit.t = tEnter;
+  hit.axis = axis;
+  hit.speed = speed;
+  return true;
 }
 
 export class PlayerController {
@@ -346,22 +406,91 @@ export class PlayerController {
         const col = center.col + dc;
         const row = center.row + dr;
         for (let h = hMin; h <= hMax; h++) {
-          const block = this.world.getBlock(col, row, h);
-          if (!block) continue;
-          if (this.blockRegistry && !this.blockRegistry.isSolid(block.blockId)) continue;
-          const slab =
-            this.blockRegistry && this.blockRegistry.getShape(block.blockId) === "slab";
-          const prism = fillPrism(col, row, h, slab ? BLOCK_HEIGHT / 2 : BLOCK_HEIGHT);
-          if (slab && block.half === "top") {
-            prism.y0 += BLOCK_HEIGHT / 2;
-            prism.y1 += BLOCK_HEIGHT / 2;
-          }
+          const prism = this._solidPrismAt(col, row, h);
+          if (!prism) continue;
           if (y1 <= prism.y0 || y0 >= prism.y1) continue; // pas de recouvrement vertical
           if (polyOverlap(hex, prism.verts)) return true;
         }
       }
     }
     return false;
+  }
+
+  /** Empreinte du bloc solide en (col,row,h) dans `_prism`, ou null si rien à heurter. */
+  _solidPrismAt(col, row, h) {
+    const block = this.world.getBlock(col, row, h);
+    if (!block) return null;
+    if (this.blockRegistry && !this.blockRegistry.isSolid(block.blockId)) return null;
+    const slab =
+      this.blockRegistry && this.blockRegistry.getShape(block.blockId) === "slab";
+    const prism = fillPrism(col, row, h, slab ? BLOCK_HEIGHT / 2 : BLOCK_HEIGHT);
+    if (slab && block.half === "top") {
+      prism.y0 += BLOCK_HEIGHT / 2;
+      prism.y1 += BLOCK_HEIGHT / 2;
+    }
+    return prism;
+  }
+
+  /**
+   * Balaye l'empreinte du joueur de (dx, dz) depuis sa position : renvoie le premier
+   * contact (`_hit`) ou null si le déplacement est libre.
+   */
+  _sweepHorizontal(dx, dz) {
+    if (!this.world.getBlock) return null;
+
+    const p = this.position;
+    const y0 = p.y;
+    const y1 = p.y + this.collisionHeight;
+    const hex = fillHex(p.x, p.z, this.collisionRadius);
+
+    const center = TriGrid.worldToGrid(p);
+    const R = 3;
+    const hMin = Math.floor(y0) - 1;
+    const hMax = Math.floor(y1) + 1;
+
+    _hit.t = Infinity;
+    let found = false;
+    for (let dc = -R; dc <= R; dc++) {
+      for (let dr = -R; dr <= R; dr++) {
+        const col = center.col + dc;
+        const row = center.row + dr;
+        for (let h = hMin; h <= hMax; h++) {
+          const prism = this._solidPrismAt(col, row, h);
+          if (!prism) continue;
+          if (y1 <= prism.y0 || y0 >= prism.y1) continue;
+          if (sweepPolys(hex, prism.verts, dx, dz, _hit)) found = true;
+        }
+      }
+    }
+    return found ? _hit : null;
+  }
+
+  /**
+   * Déplace le joueur de (dx, dz) en glissant le long des murs, façon Minecraft : on
+   * avance jusqu'au contact, puis on retire du reste du pas la composante qui rentre
+   * dans le mur et on continue avec ce qui reste.
+   */
+  _moveHorizontal(dx, dz) {
+    const p = this.position;
+    for (let i = 0; i < SLIDE_PASSES; i++) {
+      if (Math.abs(dx) + Math.abs(dz) < 1e-9) return;
+      const hit = this._sweepHorizontal(dx, dz);
+      if (!hit) {
+        p.x += dx;
+        p.z += dz;
+        return;
+      }
+      // Recul de CONTACT_SKIN perpendiculairement au mur : collé pile dessus, l'arrondi
+      // flottant imbriquerait le joueur d'un epsilon, et sweepPolys l'ignorerait ensuite.
+      const t = Math.max(0, hit.t - CONTACT_SKIN / Math.abs(hit.speed));
+      p.x += dx * t;
+      p.z += dz * t;
+      dx *= 1 - t;
+      dz *= 1 - t;
+      const into = dx * hit.axis.x + dz * hit.axis.z;
+      dx -= into * hit.axis.x;
+      dz -= into * hit.axis.z;
+    }
   }
 
   /** True si un bloc placé en (col,row,height) chevaucherait le joueur. */
@@ -464,20 +593,11 @@ export class PlayerController {
     const forward = this._getForwardDirection();
     const right = this._getRightDirection();
 
-    // Résolu par composante de déplacement réelle (avant/arrière PUIS latéral),
-    // pas par axe du monde (X/Z) : un mur en biais peut bloquer X et Z individuellement
-    // tout en laissant le pas latéral totalement libre. Décomposer par le monde
-    // empêcherait donc de glisser dans ce cas ; décomposer par forward/right glisse
-    // correctement quel que soit l'angle du mur par rapport au regard du joueur.
-    _newPos.copy(this.position);
-    _newPos.addScaledVector(forward, moveX * speed * deltaTime);
-    if (this._testCollision(_newPos)) _newPos.copy(this.position);
-
-    _stepPos.copy(_newPos);
-    _newPos.addScaledVector(right, moveZ * speed * deltaTime);
-    if (this._testCollision(_newPos)) _newPos.copy(_stepPos);
-
-    this.position.copy(_newPos);
+    const step = speed * deltaTime;
+    this._moveHorizontal(
+      (forward.x * moveX + right.x * moveZ) * step,
+      (forward.z * moveX + right.z * moveZ) * step,
+    );
 
     // ──────────────────── Vertical : vol libre OU gravité/saut ────────────────────
     if (this.flying) {

@@ -5,6 +5,20 @@ const MINING_SOUND_INTERVAL = 0.22; // le son de coup se rejoue à cette cadence
 const _eye = new THREE.Vector3();
 const _dir = new THREE.Vector3();
 
+/**
+ * Temps de minage réel : le mineTime du bloc, divisé par la vitesse de l'objet en main
+ * seulement si c'est le bon type d'outil (pioche sur un bloc "pickaxe"). Un mauvais
+ * outil ou la main nue gardent le temps de base.
+ */
+export function effectiveMineTime(registry, blockId, heldId) {
+  const base = registry.getMineTime(blockId);
+  const needed = registry.getTool(blockId);
+  const speed = needed && heldId != null && registry.getTool(heldId) === needed
+    ? registry.getToolSpeed(heldId)
+    : 1;
+  return Math.max(0.05, base / speed);
+}
+
 // Minage progressif (Survie) : maintien du clic gauche, progrès selon mineTime, fissures + drop.
 export class MiningController {
   constructor({ camera, playerController, worldManager, raycaster, renderOrigin, inventory, registry, gameMode, crackOverlay, sound }) {
@@ -76,7 +90,7 @@ export class MiningController {
       this._soundTimer = 0; // coup immédiat sur un nouveau bloc
     }
 
-    const t = Math.max(0.05, this.registry.getMineTime(block.blockId));
+    const t = effectiveMineTime(this.registry, block.blockId, this.inventory.selectedBlockId);
     this._progress += dt / t;
 
     if (this._progress >= 1) {
@@ -118,6 +132,6 @@ export class MiningController {
 
   _collectDrop(blockId) {
     const drop = this.registry.getDrop(blockId);
-    if (drop != null) this.inventory.addItem(drop, 1, this.registry.getMaxStack(drop));
+    if (drop != null) this.inventory.addItem(drop, 1);
   }
 }

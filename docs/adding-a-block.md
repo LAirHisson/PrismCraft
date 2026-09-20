@@ -1,14 +1,9 @@
 # Ajouter un bloc
 
-Voir [ARCHITECTURE.md](./ARCHITECTURE.md) pour la vue d'ensemble du pipeline
-bloc → matériau. Ce guide couvre la procédure pratique.
-
 ## 1. Une texture
 
-Ajoutez un PNG dans `public/assets/textures/blocks/` (64×64 px, style pixel art,
-cohérent avec les textures existantes). Une seule texture suffit pour un bloc simple
-(elle sert alors aux côtés ET aux calottes haut/bas) ; voir la section "Textures
-différentes par face" pour un bloc type Grass/Log.
+Ajoutez un PNG dans `public/assets/textures/blocks/` (64×64 px). Une seule texture suffit pour un bloc simple avec tous les côtés pareil.
+Voir la section "Textures différentes par face" pour un bloc type Grass/Log.
 
 ## 2. Une entrée dans `public/data/blocks.json`
 
@@ -27,10 +22,8 @@ Exemple minimal (bloc plein, texture unique, pas de forme spéciale) :
 }
 ```
 
-`id` doit être unique et **ne doit jamais changer** une fois publié — les
-sauvegardes des joueurs et le journal d'édition (`world/EditLog.js`) référencent les
-blocs par nom (résolu via `getIdByName`), donc renommer un bloc est sûr, mais changer
-son `id` sans migration ne l'est pas.
+`id` doit être unique et **ne doit jamais changer** une fois publié — sinon ça casse les 
+sauvegardes des joueurs et le journal d'édition (`world/EditLog.js`).
 
 ### Propriétés courantes
 
@@ -38,6 +31,7 @@ son `id` sans migration ne l'est pas.
 |---|---|---|---|
 | `resistance` | number | `1.0` | Facteur de dureté (voir `mineTime`) |
 | `mineTime` | number (s) | `1.0` | Temps de minage à la main |
+| `tool` | string\|null | `null` | Outil qui casse ce bloc plus vite (ex. `"pickaxe"`) ; l'item outil porte le même tag, plus `toolSpeed` (diviseur du `mineTime`) |
 | `soundType` | string | `"stone"` | Jeu de sons (`stone`/`grass`/`wood`/`sand`/`dirt`...) |
 | `opaque` | boolean | `true` | Culling des faces voisines + ombres portées |
 | `solid` | boolean | `true` | Collision joueur (`false` pour l'eau) |
@@ -56,7 +50,7 @@ existantes, ex. `getResistance`).
 
 ### Textures différentes par face
 
-Pour un bloc dont le dessus/dessous diffère des côtés (herbe, tronc...) :
+Pour un bloc dont le dessus/dessous diffère des côtés (herbe, logs...) :
 
 ```json
 {
@@ -97,12 +91,59 @@ blocs **par nom**, pas par id :
 ```
 
 `type: "shapeless"` ignore la disposition (juste la liste d'ingrédients) ;
-`type: "shaped"` respecte la grille exacte du `pattern`.
+`type: "shaped"` respecte la grille exacte du `pattern`. Un `pattern` est recadré sur
+sa boîte englobante : les `null` autour du motif ne servent qu'à la lisibilité, seule
+la forme relative compte. La première recette qui correspond gagne.
 
-## 4. C'est tout
+## Ajouter un item
 
-Aucun autre fichier à toucher — `BlockSystem.js` charge `blocks.json` et construit les
-matériaux Three.js automatiquement au démarrage, pour tous les blocs qu'il contient.
+Un item (bâton, outil, ressource) n'est pas un bloc, c'est une entrée de
+`public/data/items.json`, chargée dans le **même** registre que `blocks.json`, avec
+`"shape": "item"`. Tout le reste du jeu (inventaire, hotbar, craft, sauvegarde) le
+manipule donc comme un bloc, sauf `player/BlockInteraction.js` qui refuse de le poser.
+
+Sa texture va dans `public/assets/textures/items/` au format triangulaire des items :
+PNG **32×16**, soit 512 triangles équilatéraux (16 lignes de 32), dessiné avec
+`experiments/triangle-editor.html` en mode « Item ». Les pixels transparents ne sont
+pas rendus : ils découpent la silhouette, et le reste est extrudé en 3D.
+
+```json
+{
+  "id": 1210,
+  "name": "Stone Pickaxe",
+  "shape": "item",
+  "texture": "stone_pickaxe.png",
+  "maxStack": 1,
+  "tool": "pickaxe",
+  "toolSpeed": 4
+}
+```
+
+### Plages d'id
+
+Les ids d'items commencent à 1000 pour ne jamais entrer en collision avec ceux des
+blocs, et sont regroupés par famille :
+
+| Plage | Famille |
+|---|---|
+| 1000–1099 | Matériaux et ressources (bâton, silex, lingot, diamant, flèche...) |
+| 1100–1199 | Nourriture |
+| 1200–1299 | Outils et armes, par dix et par palier (120x bois, 121x pierre, 122x fer...) ; dans un palier, toujours pioche x0, pelle x1, hache x2, épée x3, houe x4 |
+
+### Outils
+
+`tool` est le même tag des deux côtés : sur un bloc, l'outil qui le casse plus vite ;
+sur un item, le type d'outil qu'il est. Un outil ne va vite que sur les blocs qui
+portent son tag — `toolSpeed` divise leur `mineTime`, et vaut 1 partout ailleurs
+(voir `effectiveMineTime` dans [`player/MiningController.js`](../player/MiningController.js)).
+
+Tags en place : `pickaxe` (pierre, cobblestone, bedrock), `shovel` (terre, herbe,
+sable, gravier), `axe` (bois, planches, table de craft), `sword` (aucun bloc — le
+combat n'existe pas encore), `hoe` (aucun bloc — l'agriculture n'existe pas encore).
+Paliers de `toolSpeed` : bois 2, pierre 4.
+
+Un outil se met à `"maxStack": 1`. Il n'a pas de durabilité : rien ne s'use, rien ne
+casse pour l'instant.
 
 ## Vérifier
 

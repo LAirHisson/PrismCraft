@@ -73,6 +73,7 @@ export function generateRegion(minCol, maxCol, minRow, maxRow, blockRegistry, op
   const GRASS = blockRegistry.getIdByName("Grass");
   const WATER = blockRegistry.getIdByName("Water");
   const SAND = blockRegistry.getIdByName("Sand");
+  const BEDROCK = blockRegistry.getIdByName("Bedrock");
 
   const {
     seed = 1337,
@@ -116,7 +117,8 @@ export function generateRegion(minCol, maxCol, minRow, maxRow, blockRegistry, op
       colTop.set(`${col},${row}`, top);
       for (let h = 0; h <= top; h++) {
         let id;
-        if (h === top) id = GRASS;
+        if (h === 0 && BEDROCK !== undefined) id = BEDROCK;
+        else if (h === top) id = GRASS;
         else if (h >= top - dirtDepth) id = DIRT;
         else id = STONE;
         setCell(col, row, h, id);
@@ -147,7 +149,8 @@ export function generateRegion(minCol, maxCol, minRow, maxRow, blockRegistry, op
           const k = key(nb.col, nb.row, nb.height);
           if (visited.has(k)) continue;
           const target = cells.get(k);
-          if (!target || target.blockId === WATER) continue;
+          // La bedrock reste le plancher du monde, même à portée de l'eau.
+          if (!target || target.blockId === WATER || target.blockId === BEDROCK) continue;
           visited.add(k);
           target.blockId = SAND;
           next.push(target);

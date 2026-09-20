@@ -109,6 +109,6 @@ en fichier `.json`. Le mode de jeu (survie/créatif) est persisté séparément 
 
 ## Traduction
 
-[`core/I18n.js`](../core/I18n.js) gère le FR/EN — langue détectée au démarrage,
-changeable depuis le menu Paramètres. Toute chaîne affichée au joueur doit passer par
+[`core/I18n.js`](../core/I18n.js) gère le FR/EN — anglais au premier lancement,
+changeable depuis le menu Paramètres et mémorisé ensuite. Toute chaîne affichée au joueur doit passer par
 `i18n.t("clé")`, jamais être codée en dur dans un composant UI.

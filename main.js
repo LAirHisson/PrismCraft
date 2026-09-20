@@ -26,6 +26,8 @@ const { scene, worldRoot, camera, renderer, skyRenderer, sunLight, cameraControl
   createScene();
 const renderOrigin = new RenderOrigin();
 
+const MAX_FRAME_DT = 0.1;
+
 const waterOverlay = createWaterOverlay();
 
 installBrowserGuards();
@@ -59,7 +61,7 @@ installBrowserGuards();
     },
     () => {
       cameraController.controls.unlock();
-      inputManager.keys.clear();
+      inputManager.releaseAll();
     },
     () => cameraController.controls.lock()
   );
@@ -100,6 +102,8 @@ installBrowserGuards();
     hud.setVisible(gameMode.isSurvival() && !viewRig.hudHidden);
   });
 
+  // Les deux écrans s'excluent : Tab teste déjà l'inventaire, E teste le menu.
+  inventoryUI.canOpen = () => !menu.isOpen();
   // Touche T (chat) ou / (commande)
   document.addEventListener("keydown", (e) => {
     if (e.code === "KeyT" || e.code === "Slash") {
@@ -152,6 +156,9 @@ installBrowserGuards();
   document.addEventListener("mouseup", (e) => {
     if (e.button === 0) mining.setHeld(false);
   });
+  // Alt+Tab ou changement d'onglet clic maintenu : le mouseup part à l'autre fenêtre et
+  // le minage resterait actif au retour — même raison que inputManager.releaseAll().
+  window.addEventListener("blur", () => mining.setHeld(false));
 
   // F1 : masque HUD (viseur + hotbar + cœurs + chat) et la main du joueur
   document.addEventListener("keydown", (e) => {
@@ -171,7 +178,7 @@ installBrowserGuards();
 
   const clock = new THREE.Clock();
   renderer.setAnimationLoop(() => {
-    const dt = clock.getDelta();
+    const dt = Math.min(clock.getDelta(), MAX_FRAME_DT);
     // Recentre l'origine flottante AVANT tout raycast de cette frame (voir RenderOrigin.js).
     renderOrigin.recenter(playerController.position, worldRoot);
     cameraController.update();

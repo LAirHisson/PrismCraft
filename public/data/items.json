@@ -1,0 +1,140 @@
+{
+  "items": [
+    {
+      "id": 1000,
+      "name": "Stick",
+      "shape": "item",
+      "texture": "stick.png",
+      "maxStack": 64
+    },
+    {
+      "id": 1001,
+      "name": "Flint",
+      "shape": "item",
+      "texture": "flint.png",
+      "maxStack": 64
+    },
+    {
+      "id": 1002,
+      "name": "Iron Ingot",
+      "shape": "item",
+      "texture": "iron_ingot.png",
+      "maxStack": 64
+    },
+    {
+      "id": 1003,
+      "name": "Diamond",
+      "shape": "item",
+      "texture": "diamond.png",
+      "maxStack": 64
+    },
+    {
+      "id": 1004,
+      "name": "Arrow",
+      "shape": "item",
+      "texture": "arrow.png",
+      "maxStack": 64
+    },
+    {
+      "id": 1100,
+      "name": "Apple",
+      "shape": "item",
+      "texture": "apple.png",
+      "maxStack": 64
+    },
+    {
+      "id": 1200,
+      "name": "Wooden Pickaxe",
+      "shape": "item",
+      "texture": "wooden_pickaxe.png",
+      "maxStack": 1,
+      "tool": "pickaxe",
+      "toolSpeed": 2
+    },
+    {
+      "id": 1201,
+      "name": "Wooden Shovel",
+      "shape": "item",
+      "texture": "wooden_shovel.png",
+      "maxStack": 1,
+      "tool": "shovel",
+      "toolSpeed": 2
+    },
+    {
+      "id": 1202,
+      "name": "Wooden Axe",
+      "shape": "item",
+      "texture": "wooden_axe.png",
+      "maxStack": 1,
+      "tool": "axe",
+      "toolSpeed": 2
+    },
+    {
+      "id": 1203,
+      "name": "Wooden Sword",
+      "shape": "item",
+      "texture": "wooden_sword.png",
+      "maxStack": 1,
+      "tool": "sword"
+    },
+    {
+      "id": 1204,
+      "name": "Wooden Hoe",
+      "shape": "item",
+      "texture": "wooden_hoe.png",
+      "maxStack": 1,
+      "tool": "hoe"
+    },
+    {
+      "id": 1210,
+      "name": "Stone Pickaxe",
+      "shape": "item",
+      "texture": "stone_pickaxe.png",
+      "maxStack": 1,
+      "tool": "pickaxe",
+      "toolSpeed": 4
+    },
+    {
+      "id": 1211,
+      "name": "Stone Shovel",
+      "shape": "item",
+      "texture": "stone_shovel.png",
+      "maxStack": 1,
+      "tool": "shovel",
+      "toolSpeed": 4
+    },
+    {
+      "id": 1212,
+      "name": "Stone Axe",
+      "shape": "item",
+      "texture": "stone_axe.png",
+      "maxStack": 1,
+      "tool": "axe",
+      "toolSpeed": 4
+    },
+    {
+      "id": 1213,
+      "name": "Stone Sword",
+      "shape": "item",
+      "texture": "stone_sword.png",
+      "maxStack": 1,
+      "tool": "sword"
+    },
+    {
+      "id": 1214,
+      "name": "Stone Hoe",
+      "shape": "item",
+      "texture": "stone_hoe.png",
+      "maxStack": 1,
+      "tool": "hoe"
+    },
+    {
+      "id": 1223,
+      "name": "Iron Sword",
+      "shape": "item",
+      "texture": "iron_sword.png",
+      "maxStack": 1,
+      "tool": "sword"
+    }
+  ]
+}

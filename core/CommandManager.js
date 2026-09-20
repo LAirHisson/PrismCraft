@@ -224,11 +224,8 @@ export class CommandManager {
         
         if (count <= 0) throw new Error("La quantité doit être supérieure à 0.");
 
-        // On vérifie la taille max d'un stack pour ce bloc (64 par défaut)
-        const maxStack = blockRegistry.getMaxStack ? blockRegistry.getMaxStack(blockId) : 64;
-        
-        // La fonction addItem renvoie le nombre de blocs qui n'ont pas pu rentrer dans l'inventaire
-        const remaining = inventory.addItem(blockId, count, maxStack);
+        // addItem plafonne lui-même selon le maxStack du bloc et renvoie le reliquat
+        const remaining = inventory.addItem(blockId, count);
         const given = count - remaining;
 
         if (given > 0) {

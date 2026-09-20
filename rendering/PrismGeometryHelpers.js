@@ -217,10 +217,244 @@ export function getPrismGeometryBottom(orientation, mapping = 'square') {
 }
 
 /**
- * Groupe de 3 meshes (côtés/haut/bas) représentant un bloc en dehors de toute grille —
- * pour l'afficher tenu en main ou en aperçu d'icône. Réutilise les géométries mises en
- * cache (partagées avec le mesher de chunks — NE PAS les disposer) et les matériaux du
- * registre, donc rendu identique au bloc réel (textures, mapping 'remap' inclus).
+ * Géométrie d'une croix à 3 lames (plante) — même construction que ChunkMesher
+ * (dupliquée volontairement : ChunkMesher travaille sur des tableaux bruts fusionnés
+ * par matériau, incompatibles avec un BufferGeometry autonome comme celui-ci).
+ * @param {Orientation.UP | Orientation.DOWN} orientation
+ * @returns {THREE.BufferGeometry}
+ */
+export function createPlantGeometry(orientation) {
+  const S = TRIANGLE_SIDE, H = TRIANGLE_HEIGHT, BH = BLOCK_HEIGHT;
+  const V =
+    orientation === Orientation.UP
+      ? [[-S / 2, -H / 3], [S / 2, -H / 3], [0, (2 * H) / 3]]
+      : [[S / 2, H / 3], [-S / 2, H / 3], [0, (-2 * H) / 3]];
+
+  const pos = [], nor = [], uv = [];
+  const tri = (a, b, c, n, ua, ub, uc) => {
+    pos.push(...a, ...b, ...c);
+    nor.push(...n, ...n, ...n);
+    uv.push(...ua, ...ub, ...uc);
+  };
+
+  for (const [vx, vz] of V) {
+    const len = Math.hypot(vz, vx) || 1;
+    const nf = [-vz / len, 0, vx / len];
+    const nb = [vz / len, 0, -vx / len];
+    const G0 = [0, 0, 0], V0 = [vx, 0, vz], V1 = [vx, BH, vz], G1 = [0, BH, 0];
+    tri(G0, V0, V1, nf, [0.5, 0], [1, 0], [1, 1]);
+    tri(G0, V1, G1, nf, [0.5, 0], [1, 1], [0.5, 1]);
+    tri(G0, V1, V0, nb, [0.5, 0], [0, 1], [0, 0]);
+    tri(G0, G1, V1, nb, [0.5, 0], [0.5, 1], [0, 1]);
+  }
+
+  return buildGeometry(pos, nor, uv);
+}
+
+/**
+ * Géométrie en cache pour la croix de plante.
+ * @param {Orientation.UP | Orientation.DOWN} orientation
+ * @returns {THREE.BufferGeometry}
+ */
+export function getPlantGeometry(orientation) {
+  const key = `${orientation}_plant`;
+  if (!_cache.has(key)) {
+    _cache.set(key, createPlantGeometry(orientation));
+  }
+  return _cache.get(key);
+}
+
+// Copie une géométrie en transformant Y (échelle + offset) et éventuellement V de la
+// texture — dérive une variante "slab" (demi-hauteur) d'une géométrie prisme pleine
+// déjà construite. Même formule que ChunkMesher.xformData, réappliquée ici sur un
+// THREE.BufferGeometry autonome plutôt que sur des tableaux bruts fusionnés.
+function scaleGeometryY(geo, yScale, yOffset, vScale = 1, vOffset = 0) {
+  const pos = Float32Array.from(geo.attributes.position.array);
+  for (let i = 1; i < pos.length; i += 3) pos[i] = pos[i] * yScale + yOffset;
+  let uv = geo.attributes.uv.array;
+  if (vScale !== 1 || vOffset !== 0) {
+    uv = Float32Array.from(uv);
+    for (let i = 1; i < uv.length; i += 2) uv[i] = uv[i] * vScale + vOffset;
+  }
+  const ruv = geo.attributes.remapUv?.array;
+  return buildGeometry(pos, geo.attributes.normal.array, uv, ruv);
+}
+
+/**
+ * Géométrie en cache pour les côtés d'un slab (demi-bloc).
+ * @param {Orientation.UP | Orientation.DOWN} orientation
+ * @param {'top'|'bottom'} half
+ * @returns {THREE.BufferGeometry}
+ */
+export function getSlabGeometrySides(orientation, half) {
+  const key = `${orientation}_slab_${half}_sides`;
+  if (!_cache.has(key)) {
+    const base = getPrismGeometrySides(orientation);
+    _cache.set(
+      key,
+      half === "top" ? scaleGeometryY(base, 0.5, 0.5, 0.5, 0.5) : scaleGeometryY(base, 0.5, 0, 0.5, 0),
+    );
+  }
+  return _cache.get(key);
+}
+
+/**
+ * Géométrie en cache pour la calotte HAUT d'un slab (demi-bloc).
+ * @param {Orientation.UP | Orientation.DOWN} orientation
+ * @param {'square'|'triangle'|'remap'} mapping
+ * @param {'top'|'bottom'} half
+ * @returns {THREE.BufferGeometry}
+ */
+export function getSlabGeometryTop(orientation, mapping, half) {
+  const key = `${orientation}_${mapping}_slab_${half}_top`;
+  if (!_cache.has(key)) {
+    const base = getPrismGeometryTop(orientation, mapping);
+    _cache.set(key, half === "top" ? base : scaleGeometryY(base, 0.5, 0));
+  }
+  return _cache.get(key);
+}
+
+/**
+ * Géométrie en cache pour la calotte BAS d'un slab (demi-bloc).
+ * @param {Orientation.UP | Orientation.DOWN} orientation
+ * @param {'square'|'triangle'|'remap'} mapping
+ * @param {'top'|'bottom'} half
+ * @returns {THREE.BufferGeometry}
+ */
+export function getSlabGeometryBottom(orientation, mapping, half) {
+  const key = `${orientation}_${mapping}_slab_${half}_bottom`;
+  if (!_cache.has(key)) {
+    const base = getPrismGeometryBottom(orientation, mapping);
+    _cache.set(key, half === "top" ? scaleGeometryY(base, 1, 0.5) : base);
+  }
+  return _cache.get(key);
+}
+
+// Item : 512 triangles équilatéraux en 16 rangées de 32, même treillis que le mode
+// "item" de experiments/triangle-editor.js et même règle de parité que la grille du
+// monde ((k+r)%2 === 0 → ▲). La texture est un PNG 32×16 : pixel (k, r) = triangle k de
+// la rangée r.
+const ITEM_ROWS = 16;
+const ITEM_PER_ROW = 32;
+const ITEM_ROW_H = Math.sqrt(3) / 2;
+// 1 de large (comme un prisme, donc réglages en main comparables) ; hauteur ≈ 0.84.
+const ITEM_SCALE = 1 / (ITEM_PER_ROW / 2 + 0.5);
+export const ITEM_HEIGHT = ITEM_ROWS * ITEM_ROW_H * ITEM_SCALE;
+// Épaisseur d'une arête de triangle : l'équivalent de l'épaisseur d'un pixel des items
+// Minecraft tenus en main.
+const ITEM_DEPTH = ITEM_SCALE;
+
+function readItemPixels(texture) {
+  const img = texture?.image;
+  if (!img) return null;
+  const c = document.createElement('canvas');
+  c.width = ITEM_PER_ROW;
+  c.height = ITEM_ROWS;
+  const ctx = c.getContext('2d');
+  ctx.drawImage(img, 0, 0, ITEM_PER_ROW, ITEM_ROWS);
+  return ctx.getImageData(0, 0, ITEM_PER_ROW, ITEM_ROWS).data;
+}
+
+/**
+ * Géométrie 3D d'un item, façon items Minecraft en main : chaque triangle opaque de la
+ * texture devient une tranche de prisme (face avant + face arrière) et reçoit une paroi
+ * sur chaque arête qui borde du vide ou le bord du treillis — même principe que le
+ * culling des faces entre blocs. Chaque triangle a tous ses UV sur le CENTRE de son
+ * pixel : couleur plate, parois comprises.
+ *
+ * Contrairement aux géométries de blocs, elle dépend des pixels de la texture : une par
+ * texture, qui doit être chargée (PrismMaterial précharge les textures d'items).
+ * Placée dans le plan XY, centrée en X, de y = 0 à ITEM_HEIGHT, épaisse sur Z.
+ * @param {THREE.Texture|null} texture
+ * @returns {THREE.BufferGeometry}
+ */
+export function createItemGeometry(texture) {
+  const data = readItemPixels(texture);
+  const opaque = (k, r) =>
+    !!data && k >= 0 && k < ITEM_PER_ROW && r >= 0 && r < ITEM_ROWS &&
+    data[(r * ITEM_PER_ROW + k) * 4 + 3] >= 128;
+
+  const pos = [], nor = [], uvs = [];
+  const z = ITEM_DEPTH / 2;
+
+  // Réordonne les sommets pour que la face avant regarde vers `n` : culling et éclairage
+  // restent cohérents sans avoir à raisonner sur le sens de chaque triangle émis.
+  const tri = (a, b, c, n, u, v) => {
+    const e1 = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+    const e2 = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+    const cx = e1[1] * e2[2] - e1[2] * e2[1];
+    const cy = e1[2] * e2[0] - e1[0] * e2[2];
+    const cz = e1[0] * e2[1] - e1[1] * e2[0];
+    if (cx * n[0] + cy * n[1] + cz * n[2] < 0) [b, c] = [c, b];
+    pos.push(...a, ...b, ...c);
+    nor.push(...n, ...n, ...n);
+    uvs.push(u, v, u, v, u, v);
+  };
+
+  // Unités d'arête (x vers la droite, rangée 0 en haut) → espace local (Y monte, centré en X).
+  const P = (ux, uy) => ({ x: ux * ITEM_SCALE - 0.5, y: ITEM_HEIGHT - uy * ITEM_SCALE });
+
+  for (let r = 0; r < ITEM_ROWS; r++) {
+    const yT = r * ITEM_ROW_H;
+    const yB = yT + ITEM_ROW_H;
+    for (let k = 0; k < ITEM_PER_ROW; k++) {
+      if (!opaque(k, r)) continue;
+      const x0 = k / 2;
+      const up = (k + r) % 2 === 0;
+      const [A, B, C] = up
+        ? [P(x0 + 0.5, yT), P(x0, yB), P(x0 + 1, yB)]
+        : [P(x0, yT), P(x0 + 1, yT), P(x0 + 0.5, yB)];
+      // Arête → triangle voisin de l'autre côté (▲ : gauche, droite, bas ; ▽ : haut, gauche, droite).
+      const edges = up
+        ? [[A, B, k - 1, r], [A, C, k + 1, r], [B, C, k, r + 1]]
+        : [[A, B, k, r - 1], [A, C, k - 1, r], [B, C, k + 1, r]];
+      const u = (k + 0.5) / ITEM_PER_ROW;
+      const v = 1 - (r + 0.5) / ITEM_ROWS;
+
+      tri([A.x, A.y, z], [B.x, B.y, z], [C.x, C.y, z], [0, 0, 1], u, v);
+      tri([A.x, A.y, -z], [B.x, B.y, -z], [C.x, C.y, -z], [0, 0, -1], u, v);
+
+      const gx = (A.x + B.x + C.x) / 3;
+      const gy = (A.y + B.y + C.y) / 3;
+      for (const [p, q, nk, nr] of edges) {
+        if (opaque(nk, nr)) continue;
+        let nx = q.y - p.y;
+        let ny = p.x - q.x;
+        if (((p.x + q.x) / 2 - gx) * nx + ((p.y + q.y) / 2 - gy) * ny < 0) {
+          nx = -nx;
+          ny = -ny;
+        }
+        const len = Math.hypot(nx, ny);
+        const n = [nx / len, ny / len, 0];
+        tri([p.x, p.y, z], [q.x, q.y, z], [q.x, q.y, -z], n, u, v);
+        tri([p.x, p.y, z], [q.x, q.y, -z], [p.x, p.y, -z], n, u, v);
+      }
+    }
+  }
+
+  return buildGeometry(pos, nor, uvs);
+}
+
+/**
+ * Géométrie 3D en cache d'un item, par texture.
+ * @param {THREE.Texture|null} texture
+ * @returns {THREE.BufferGeometry}
+ */
+export function getItemGeometry(texture) {
+  const key = `item_${texture?.uuid}`;
+  if (!_cache.has(key)) {
+    _cache.set(key, createItemGeometry(texture));
+  }
+  return _cache.get(key);
+}
+
+/**
+ * Groupe de meshes représentant un bloc en dehors de toute grille — pour l'afficher
+ * tenu en main ou en aperçu d'icône. La forme suit `blockRegistry.getShape()` (prisme
+ * plein, plante, ou slab en moitié basse — un item en main n'a pas de moitié posée à
+ * refléter). Réutilise les géométries mises en cache (partagées avec le mesher de
+ * chunks — NE PAS les disposer) et les matériaux du registre, donc rendu identique au
+ * bloc réel (textures, mapping 'remap' inclus).
  * @param {number} blockId
  * @param {Map<number,{side,top,bottom}>} materials
  * @param {import('../world/BlockRegistry.js').BlockRegistry} blockRegistry
@@ -229,10 +463,32 @@ export function getPrismGeometryBottom(orientation, mapping = 'square') {
  */
 export function createPrismItemGroup(blockId, materials, blockRegistry, orientation = Orientation.UP) {
   const mat = materials.get(blockId);
+  const shape = blockRegistry.getShape(blockId);
+  const group = new THREE.Group();
+
+  if (shape === "item") {
+    group.add(new THREE.Mesh(getItemGeometry(mat?.side?.map ?? null), mat?.side));
+    return group;
+  }
+
+  if (shape === "plant") {
+    group.add(new THREE.Mesh(getPlantGeometry(orientation), mat?.side));
+    return group;
+  }
+
   const topMapping = blockRegistry.getTopMapping(blockId);
   const bottomMapping = blockRegistry.getBottomMapping(blockId);
 
-  const group = new THREE.Group();
+  if (shape === "slab") {
+    const half = "bottom";
+    group.add(
+      new THREE.Mesh(getSlabGeometrySides(orientation, half), mat?.side),
+      new THREE.Mesh(getSlabGeometryTop(orientation, topMapping, half), mat?.top ?? mat?.side),
+      new THREE.Mesh(getSlabGeometryBottom(orientation, bottomMapping, half), mat?.bottom ?? mat?.side),
+    );
+    return group;
+  }
+
   group.add(
     new THREE.Mesh(getPrismGeometrySides(orientation), mat?.side),
     new THREE.Mesh(getPrismGeometryTop(orientation, topMapping), mat?.top ?? mat?.side),

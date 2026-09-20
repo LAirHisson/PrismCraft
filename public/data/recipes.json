@@ -20,6 +20,11 @@
     },
     {
       "type": "shaped",
+      "pattern": [["Planks"], ["Planks"]],
+      "result": { "block": "Stick", "count": 4 }
+    },
+    {
+      "type": "shaped",
       "pattern": [["Planks", "Planks", "Planks"]],
       "result": { "block": "Planks Slab", "count": 6 }
     },
@@ -32,6 +37,85 @@
       "type": "shaped",
       "pattern": [["Stone", "Stone", "Stone"]],
       "result": { "block": "Stone Slab", "count": 6 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [
+        ["Planks", "Planks", "Planks"],
+        [null, "Stick", null],
+        [null, "Stick", null]
+      ],
+      "result": { "block": "Wooden Pickaxe", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [["Planks"], ["Stick"], ["Stick"]],
+      "result": { "block": "Wooden Shovel", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [
+        ["Planks", "Planks"],
+        ["Planks", "Stick"],
+        [null, "Stick"]
+      ],
+      "result": { "block": "Wooden Axe", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [["Planks"], ["Planks"], ["Stick"]],
+      "result": { "block": "Wooden Sword", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [
+        ["Planks", "Planks"],
+        [null, "Stick"],
+        [null, "Stick"]
+      ],
+      "result": { "block": "Wooden Hoe", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [
+        ["Cobbletone", "Cobbletone", "Cobbletone"],
+        [null, "Stick", null],
+        [null, "Stick", null]
+      ],
+      "result": { "block": "Stone Pickaxe", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [["Cobbletone"], ["Stick"], ["Stick"]],
+      "result": { "block": "Stone Shovel", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [
+        ["Cobbletone", "Cobbletone"],
+        ["Cobbletone", "Stick"],
+        [null, "Stick"]
+      ],
+      "result": { "block": "Stone Axe", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [["Cobbletone"], ["Cobbletone"], ["Stick"]],
+      "result": { "block": "Stone Sword", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [
+        ["Cobbletone", "Cobbletone"],
+        [null, "Stick"],
+        [null, "Stick"]
+      ],
+      "result": { "block": "Stone Hoe", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [["Iron Ingot"], ["Iron Ingot"], ["Stick"]],
+      "result": { "block": "Iron Sword", "count": 1 }
     }
   ]
 }

@@ -43,7 +43,7 @@ export function createGameSystems({
   const worldManager = new WorldManager(worldRoot, materials, blockRegistry);
   if (existingSave) worldManager.edits.load(existingSave.world.edits, blockRegistry);
 
-  const inventory = new Inventory();
+  const inventory = new Inventory(blockRegistry);
   if (existingSave?.inventory) inventory.load(existingSave.inventory, blockRegistry);
 
   const gameMode = new GameMode();

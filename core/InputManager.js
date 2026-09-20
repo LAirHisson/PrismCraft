@@ -49,6 +49,18 @@ class InputManager {
     document.addEventListener('click', () => {
       this.clickCount++;
     });
+
+    // Alt+Tab, changement d'onglet, clic hors de la page : le keyup part à l'ancienne
+    // fenêtre et n'arrive jamais ici — la touche resterait enfoncée pour toujours
+    // (joueur qui avance tout seul au retour). On repart donc d'un état vierge.
+    window.addEventListener('blur', () => this.releaseAll());
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) this.releaseAll();
+    });
+  }
+
+  releaseAll() {
+    this.keys.clear();
   }
 
   /**
