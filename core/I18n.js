@@ -14,9 +14,7 @@ const DICTS = {
     mode: "Mode",
     modeSurvival: "Mode : Survie",
     modeCreative: "Mode : Créatif",
-    // Libellé bilingue : c'est le bouton qui sert à retrouver sa langue quand le jeu
-    // s'est lancé dans l'autre, donc il doit rester lisible dans les deux.
-    language: "Language / Langue",
+    language: "Langue",
     languageName: "Français",
     settings: "Paramètres",
     resume: "Reprendre",
@@ -46,7 +44,7 @@ const DICTS = {
     mode: "Mode",
     modeSurvival: "Mode: Survival",
     modeCreative: "Mode: Creative",
-    language: "Language / Langue",
+    language: "Language",
     languageName: "English",
     settings: "Settings",
     resume: "Resume",
@@ -80,7 +78,7 @@ class I18n {
     this._listeners = new Set();
   }
 
-  /** Traduit une clé dans la langue courante (repli EN puis la clé elle-même). */
+  /** Traduction des clés */
   t(key) {
     return DICTS[this.lang]?.[key] ?? DICTS[Lang.EN][key] ?? key;
   }

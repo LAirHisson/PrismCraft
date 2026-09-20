@@ -5,7 +5,9 @@ export const INV_ROWS = 3;
 export const MAX_STACK = 64;
 
 export class Inventory {
-  constructor(size = HOTBAR_SIZE + INV_COLS * INV_ROWS) {
+  constructor(blockRegistry = null, size = HOTBAR_SIZE + INV_COLS * INV_ROWS) {
+    this.blockRegistry = blockRegistry;
+
     // Définition des slots, vides au début
     this.slots = new Array(size).fill(null);
 
@@ -17,10 +19,13 @@ export class Inventory {
     // Définir le slot séléctionné
     this.selectedHotbarSlot = 0;
 
-    this.maxStack = MAX_STACK;
-
     // Notifs d'update
     this._listeners = new Set();
+  }
+
+  // Taille de pile propre au bloc/item (un outil vaut 1).
+  maxStackOf(blockId) {
+    return this.blockRegistry?.getMaxStack(blockId) ?? MAX_STACK;
   }
 
   // ─────────────── Accès par zone (hotbar | storage | craft) ───────────────
@@ -53,7 +58,7 @@ export class Inventory {
       this._setAt(zone, i, cur);
       this.cursor = null;
     } else if (s.blockId === cur.blockId) {
-      const room = this.maxStack - s.count;
+      const room = this.maxStackOf(cur.blockId) - s.count;
       if (room > 0) {
         const move = Math.min(room, cur.count);
         s.count += move;
@@ -84,7 +89,7 @@ export class Inventory {
       this._setAt(zone, i, { blockId: cur.blockId, count: 1 });
       cur.count -= 1;
       if (cur.count <= 0) this.cursor = null;
-    } else if (s.blockId === cur.blockId && s.count < this.maxStack) {
+    } else if (s.blockId === cur.blockId && s.count < this.maxStackOf(cur.blockId)) {
       s.count += 1;
       cur.count -= 1;
       if (cur.count <= 0) this.cursor = null;
@@ -96,7 +101,8 @@ export class Inventory {
 
   // Dépose `count` blocs dans les slots [start, end) : complète les stacks puis les vides.
   // Retourne le reliquat.
-  _deposit(start, end, blockId, count, maxStack = this.maxStack) {
+  _deposit(start, end, blockId, count) {
+    const maxStack = this.maxStackOf(blockId);
     let remaining = count;
     for (let i = start; i < end && remaining > 0; i++) {
       const s = this.slots[i];
@@ -151,7 +157,7 @@ export class Inventory {
         return true;
       }
       const cur = this.cursor;
-      if (cur && (cur.blockId !== res.blockId || cur.count + res.count > this.maxStack)) {
+      if (cur && (cur.blockId !== res.blockId || cur.count + res.count > this.maxStackOf(res.blockId))) {
         return false;
       }
       crafting.consumeOne(grid);
@@ -178,7 +184,8 @@ export class Inventory {
 
   // Range `count` blocs : complète les stacks existants puis les slots vides.
   // Retourne le reliquat non casé (0 si tout a été rangé).
-  addItem(blockId, count = 1, maxStack = this.maxStack) {
+  addItem(blockId, count = 1) {
+    const maxStack = this.maxStackOf(blockId);
     let remaining = count;
     for (const s of this.slots) {
       if (remaining <= 0) break;

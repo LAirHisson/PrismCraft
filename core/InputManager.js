@@ -59,7 +59,6 @@ class InputManager {
     });
   }
 
-  /** Relâche toutes les touches (perte de focus). */
   releaseAll() {
     this.keys.clear();
   }

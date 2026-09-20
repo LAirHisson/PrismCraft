@@ -375,7 +375,10 @@ export class InventoryUI {
       const zone = cell.dataset.zone;
       const i = Number(cell.dataset.index);
       if (zone === "palette") {
-        if (e.button === 0) this.inventory.addItem(i, e.shiftKey ? 64 : 1); // i = blockId
+        // i = blockId
+        if (e.button === 0) {
+          this.inventory.addItem(i, e.shiftKey ? this.blockRegistry.getMaxStack(i) : 1);
+        }
       } else if (zone === "result") {
         if (e.button === 0) this._takeResult(e.shiftKey);
       } else if (e.button === 0 && e.shiftKey) this.inventory.quickMove(zone, i);

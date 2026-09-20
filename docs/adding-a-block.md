@@ -1,14 +1,9 @@
 # Ajouter un bloc
 
-Voir [ARCHITECTURE.md](./ARCHITECTURE.md) pour la vue d'ensemble du pipeline
-bloc → matériau. Ce guide couvre la procédure pratique.
-
 ## 1. Une texture
 
-Ajoutez un PNG dans `public/assets/textures/blocks/` (64×64 px, style pixel art,
-cohérent avec les textures existantes). Une seule texture suffit pour un bloc simple
-(elle sert alors aux côtés ET aux calottes haut/bas) ; voir la section "Textures
-différentes par face" pour un bloc type Grass/Log.
+Ajoutez un PNG dans `public/assets/textures/blocks/` (64×64 px). Une seule texture suffit pour un bloc simple avec tous les côtés pareil.
+Voir la section "Textures différentes par face" pour un bloc type Grass/Log.
 
 ## 2. Une entrée dans `public/data/blocks.json`
 
@@ -27,10 +22,8 @@ Exemple minimal (bloc plein, texture unique, pas de forme spéciale) :
 }
 ```
 
-`id` doit être unique et **ne doit jamais changer** une fois publié — les
-sauvegardes des joueurs et le journal d'édition (`world/EditLog.js`) référencent les
-blocs par nom (résolu via `getIdByName`), donc renommer un bloc est sûr, mais changer
-son `id` sans migration ne l'est pas.
+`id` doit être unique et **ne doit jamais changer** une fois publié — sinon ça casse les 
+sauvegardes des joueurs et le journal d'édition (`world/EditLog.js`).
 
 ### Propriétés courantes
 
@@ -57,7 +50,7 @@ existantes, ex. `getResistance`).
 
 ### Textures différentes par face
 
-Pour un bloc dont le dessus/dessous diffère des côtés (herbe, tronc...) :
+Pour un bloc dont le dessus/dessous diffère des côtés (herbe, logs...) :
 
 ```json
 {
@@ -102,14 +95,9 @@ blocs **par nom**, pas par id :
 sa boîte englobante : les `null` autour du motif ne servent qu'à la lisibilité, seule
 la forme relative compte. La première recette qui correspond gagne.
 
-## 4. C'est tout
-
-Aucun autre fichier à toucher — `BlockSystem.js` charge `blocks.json` et construit les
-matériaux Three.js automatiquement au démarrage, pour tous les blocs qu'il contient.
-
 ## Ajouter un item
 
-Un item (bâton, outil, ressource) n'est pas un bloc à part : c'est une entrée de
+Un item (bâton, outil, ressource) n'est pas un bloc, c'est une entrée de
 `public/data/items.json`, chargée dans le **même** registre que `blocks.json`, avec
 `"shape": "item"`. Tout le reste du jeu (inventaire, hotbar, craft, sauvegarde) le
 manipule donc comme un bloc, sauf `player/BlockInteraction.js` qui refuse de le poser.
@@ -134,9 +122,7 @@ pas rendus : ils découpent la silhouette, et le reste est extrudé en 3D.
 ### Plages d'id
 
 Les ids d'items commencent à 1000 pour ne jamais entrer en collision avec ceux des
-blocs, et sont regroupés par famille — l'ordre du fichier est aussi l'ordre de la
-palette créative, donc gardez id croissant et ordre du fichier alignés, en laissant
-des trous pour les ajouts futurs :
+blocs, et sont regroupés par famille :
 
 | Plage | Famille |
 |---|---|

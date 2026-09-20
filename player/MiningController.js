@@ -132,6 +132,6 @@ export class MiningController {
 
   _collectDrop(blockId) {
     const drop = this.registry.getDrop(blockId);
-    if (drop != null) this.inventory.addItem(drop, 1, this.registry.getMaxStack(drop));
+    if (drop != null) this.inventory.addItem(drop, 1);
   }
 }

@@ -21,6 +21,8 @@ const { scene, worldRoot, camera, renderer, skyRenderer, sunLight, cameraControl
   createScene();
 const renderOrigin = new RenderOrigin();
 
+const MAX_FRAME_DT = 0.1;
+
 const waterOverlay = createWaterOverlay();
 
 installBrowserGuards();
@@ -129,7 +131,7 @@ installBrowserGuards();
 
   const clock = new THREE.Clock();
   renderer.setAnimationLoop(() => {
-    const dt = clock.getDelta();
+    const dt = Math.min(clock.getDelta(), MAX_FRAME_DT);
     // Recentre l'origine flottante AVANT tout raycast de cette frame (voir RenderOrigin.js).
     renderOrigin.recenter(playerController.position, worldRoot);
     cameraController.update();
