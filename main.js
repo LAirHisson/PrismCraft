@@ -68,6 +68,9 @@ installBrowserGuards();
     hud.setVisible(gameMode.isSurvival() && !viewRig.hudHidden);
   });
 
+  // Les deux écrans s'excluent : Tab teste déjà l'inventaire, E teste le menu.
+  inventoryUI.canOpen = () => !menu.isOpen();
+
   document.addEventListener("keydown", (e) => {
     if (e.code !== "Tab") return;
     e.preventDefault();

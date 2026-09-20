@@ -35,10 +35,9 @@ export class InventoryUI {
     this.gameMode = gameMode;
 
     this._open = false;
-    this._tab = "inventory"; // "inventory" | "give" (give = créatif seulement)
-    this._table = false;     // true = écran d'une crafting table (grille N×N)
-    this._craft = PERSONAL_CRAFT;
-    this._paletteScroll = 0; // survit aux reconstructions du panneau (voir _refresh)
+    this._tab = "inventory";
+    this._table = false; 
+    this.canOpen = () => true; // remplacé par main.js : pas d'ouverture par-dessus le menu pause
 
     this._buildDOM();
     this._bindEvents();
@@ -362,7 +361,7 @@ export class InventoryUI {
 
   _bindEvents() {
     document.addEventListener("keydown", (e) => {
-      if (e.code === "KeyE" && !e.repeat) this.toggle();
+      if (e.code === "KeyE" && !e.repeat && (this._open || this.canOpen())) this.toggle();
       else if (e.code === "Escape" && this._open) this.close();
     });
 
