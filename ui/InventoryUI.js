@@ -156,6 +156,19 @@ export class InventoryUI {
     this._ghost = ghost;
     this._ghostIcon = ghostIcon;
     this._ghostCount = ghostCount;
+    this._pointer = { x: 0, y: 0 };
+  }
+
+  /**
+   * Mémorise le dernier point connu du pointeur et y place le fantôme. Suivi même quand
+   * le curseur est vide : sinon un item pris sans bouger la souris (craft, clic) s'affiche
+   * à l'endroit du dernier item tenu jusqu'au prochain mousemove.
+   */
+  _setPointer(e) {
+    this._pointer.x = e.clientX;
+    this._pointer.y = e.clientY;
+    this._ghost.style.left = `${e.clientX}px`;
+    this._ghost.style.top = `${e.clientY}px`;
   }
 
   // (Re)construit onglets (au-dessus, créatif hors table) + module haut + stockage + hotbar.
@@ -341,6 +354,8 @@ export class InventoryUI {
       return;
     }
     this._ghost.style.display = "block";
+    this._ghost.style.left = `${this._pointer.x}px`;
+    this._ghost.style.top = `${this._pointer.y}px`;
     setItemIcon(this._ghostIcon, cur.blockId, this.blockRegistry, this.materials);
     this._ghostCount.textContent = cur.count > 1 ? cur.count : "";
   }
@@ -353,6 +368,7 @@ export class InventoryUI {
 
     // Clic gauche = prendre/poser, clic droit = moitié/poser 1.
     this._content.addEventListener("mousedown", (e) => {
+      this._setPointer(e); // clic sans mouvement préalable (inventaire ouvert au clavier)
       const cell = e.target.closest("[data-zone]");
       if (!cell) return;
       e.preventDefault();
@@ -384,10 +400,7 @@ export class InventoryUI {
     );
 
     document.addEventListener("mousemove", (e) => {
-      if (this._open && this.inventory.cursor) {
-        this._ghost.style.left = `${e.clientX}px`;
-        this._ghost.style.top = `${e.clientY}px`;
-      }
+      if (this._open) this._setPointer(e);
     });
   }
 }
