@@ -45,7 +45,7 @@ export class Chat {
     this.input.addEventListener("keydown", (e) => {
       e.stopPropagation();
 
-      if (e.code === "Enter") {
+      if (e.code === "Enter" || e.code === "NumpadEnter") {
         const val = this.input.value.trim();
         if (val) {
           if (val.startsWith("/")) {
@@ -129,6 +129,10 @@ export class Chat {
   addMessage(text, color = "white") {
     const msg = document.createElement("div");
     msg.textContent = text;
+    msg.style.cssText = `
+      background: rgba(0,0,0,0.5); padding: 2px 6px;
+      overflow-wrap: anywhere;
+    `;
     msg.style.color = color;
     this.history.appendChild(msg);
     if (this.history.children.length > 50) this.history.firstChild.remove();
