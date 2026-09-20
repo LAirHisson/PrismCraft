@@ -108,6 +108,9 @@ installBrowserGuards();
   document.addEventListener("mouseup", (e) => {
     if (e.button === 0) mining.setHeld(false);
   });
+  // Alt+Tab ou changement d'onglet clic maintenu : le mouseup part à l'autre fenêtre et
+  // le minage resterait actif au retour — même raison que inputManager.releaseAll().
+  window.addEventListener("blur", () => mining.setHeld(false));
 
   // F1 : masque HUD (viseur + hotbar + cœurs) et la main du joueur
   document.addEventListener("keydown", (e) => {

@@ -142,7 +142,7 @@ des trous pour les ajouts futurs :
 |---|---|
 | 1000–1099 | Matériaux et ressources (bâton, silex, lingot, diamant, flèche...) |
 | 1100–1199 | Nourriture |
-| 1200–1299 | Outils et armes, par dix et par palier (120x bois, 121x pierre, 122x fer...) |
+| 1200–1299 | Outils et armes, par dix et par palier (120x bois, 121x pierre, 122x fer...) ; dans un palier, toujours pioche x0, pelle x1, hache x2, épée x3, houe x4 |
 
 ### Outils
 
@@ -153,7 +153,8 @@ portent son tag — `toolSpeed` divise leur `mineTime`, et vaut 1 partout ailleu
 
 Tags en place : `pickaxe` (pierre, cobblestone, bedrock), `shovel` (terre, herbe,
 sable, gravier), `axe` (bois, planches, table de craft), `sword` (aucun bloc — le
-combat n'existe pas encore). Paliers de `toolSpeed` : bois 2, pierre 4.
+combat n'existe pas encore), `hoe` (aucun bloc — l'agriculture n'existe pas encore).
+Paliers de `toolSpeed` : bois 2, pierre 4.
 
 Un outil se met à `"maxStack": 1`. Il n'a pas de durabilité : rien ne s'use, rien ne
 casse pour l'instant.

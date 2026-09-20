@@ -13,9 +13,9 @@ const HELD_BLOCK_POS = new THREE.Vector3(0.02, -0.8, 0.2);
 const HELD_BLOCK_ROT = new THREE.Euler(Math.PI+2, 1, 0);
 const HELD_BLOCK_SCALE = 0.45;
 
-const HELD_ITEM_POS = new THREE.Vector3(-0.01, -0.7, -0.4);
+const HELD_ITEM_POS = new THREE.Vector3(-0.01, -0.8, -0.6);
 const HELD_ITEM_ROT = new THREE.Euler(Math.PI / 2.3, Math.PI / 0.7, 0.2);
-const HELD_ITEM_SCALE = 0.7;
+const HELD_ITEM_SCALE = 0.9;
 
 const THIRD_PERSON_DIST = 3.5;
 

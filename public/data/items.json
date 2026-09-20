@@ -61,6 +61,31 @@
       "toolSpeed": 2
     },
     {
+      "id": 1202,
+      "name": "Wooden Axe",
+      "shape": "item",
+      "texture": "wooden_axe.png",
+      "maxStack": 1,
+      "tool": "axe",
+      "toolSpeed": 2
+    },
+    {
+      "id": 1203,
+      "name": "Wooden Sword",
+      "shape": "item",
+      "texture": "wooden_sword.png",
+      "maxStack": 1,
+      "tool": "sword"
+    },
+    {
+      "id": 1204,
+      "name": "Wooden Hoe",
+      "shape": "item",
+      "texture": "wooden_hoe.png",
+      "maxStack": 1,
+      "tool": "hoe"
+    },
+    {
       "id": 1210,
       "name": "Stone Pickaxe",
       "shape": "item",
@@ -88,7 +113,23 @@
       "toolSpeed": 4
     },
     {
-      "id": 1220,
+      "id": 1213,
+      "name": "Stone Sword",
+      "shape": "item",
+      "texture": "stone_sword.png",
+      "maxStack": 1,
+      "tool": "sword"
+    },
+    {
+      "id": 1214,
+      "name": "Stone Hoe",
+      "shape": "item",
+      "texture": "stone_hoe.png",
+      "maxStack": 1,
+      "tool": "hoe"
+    },
+    {
+      "id": 1223,
       "name": "Iron Sword",
       "shape": "item",
       "texture": "iron_sword.png",

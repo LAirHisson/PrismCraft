@@ -55,6 +55,29 @@
     {
       "type": "shaped",
       "pattern": [
+        ["Planks", "Planks"],
+        ["Planks", "Stick"],
+        [null, "Stick"]
+      ],
+      "result": { "block": "Wooden Axe", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [["Planks"], ["Planks"], ["Stick"]],
+      "result": { "block": "Wooden Sword", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [
+        ["Planks", "Planks"],
+        [null, "Stick"],
+        [null, "Stick"]
+      ],
+      "result": { "block": "Wooden Hoe", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [
         ["Cobbletone", "Cobbletone", "Cobbletone"],
         [null, "Stick", null],
         [null, "Stick", null]
@@ -74,6 +97,20 @@
         [null, "Stick"]
       ],
       "result": { "block": "Stone Axe", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [["Cobbletone"], ["Cobbletone"], ["Stick"]],
+      "result": { "block": "Stone Sword", "count": 1 }
+    },
+    {
+      "type": "shaped",
+      "pattern": [
+        ["Cobbletone", "Cobbletone"],
+        [null, "Stick"],
+        [null, "Stick"]
+      ],
+      "result": { "block": "Stone Hoe", "count": 1 }
     },
     {
       "type": "shaped",

@@ -44,6 +44,11 @@ function triButton(label, up, onClick) {
   return wrap;
 }
 
+/** Libellé du bouton de langue : bilingue, suivi du nom de la langue courante. */
+function langLabel() {
+  return `${i18n.t("language")} : ${i18n.t("languageName")}`;
+}
+
 function slider(cfg) {
   const wrap = document.createElement("div");
   wrap.style.cssText = "width: 100%; margin: 8px 0;";
@@ -185,7 +190,10 @@ export class Menu {
     this._exportBtn = triButton(i18n.t("exportSave"), true, () => this.onExportSave?.());
     this._importBtn = triButton(i18n.t("importSave"), false, () => saveFileInput.click());
     this._newGameBtn = triButton(i18n.t("newGame"), true, () => this.onNewGame?.());
-    this._langBtn = triButton(i18n.lang.toUpperCase(), false, () => i18n.toggle());
+    this._langBtn = triButton(langLabel(), false, () => i18n.toggle());
+    // Libellé bilingue bien plus long que les autres : à 18px il se ferait tronquer par
+    // l'ellipsis du bouton, dont la largeur est fixe.
+    this._langBtn.querySelector("span").style.fontSize = "16px";
     this._backBtn = triButton(i18n.t("back"), true, () => this._show("main"));
     settings.append(
       this._exportBtn,
@@ -266,7 +274,7 @@ export class Menu {
     setLabel(this._importBtn, i18n.t("importSave"));
     setLabel(this._newGameBtn, i18n.t("newGame"));
     setLabel(this._backBtn, i18n.t("back"));
-    setLabel(this._langBtn, i18n.lang.toUpperCase());
+    setLabel(this._langBtn, langLabel());
     if (this._settingsTitle) this._settingsTitle.textContent = i18n.t("settings");
     for (const key in this._sliders) this._sliders[key]._refreshLabel();
   }

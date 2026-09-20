@@ -38,9 +38,10 @@ function ensureRenderer() {
   camera.lookAt(0, -0.1, 0);
 
   // Un item est un sprite plat : vu sous l'angle 3/4 des blocs il serait quasi invisible
-  // (par la tranche), d'où une caméra de face dédiée.
+  // (par la tranche), d'où une caméra de face dédiée. Reculée pour que les items ne
+  // remplissent pas plus leur case que les prismes, qui sont vus de plus loin.
   itemCamera = new THREE.PerspectiveCamera(30, 1, 0.1, 10);
-  itemCamera.position.set(0, 0, 2.1);
+  itemCamera.position.set(0, 0, 2.45);
   itemCamera.lookAt(0, 0, 0);
 }
 

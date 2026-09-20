@@ -1,5 +1,5 @@
-// Traductions FR/EN. Langue détectée depuis le navigateur au tout premier lancement
-// (aucune préférence enregistrée), puis persistée en localStorage — même schéma que
+// Traductions FR/EN. Anglais au tout premier lancement, quelle que soit la langue du
+// navigateur, puis la langue choisie est persistée en localStorage — même schéma que
 // core/GameMode.js. Singleton exporté (comme core/InputManager.js) : accessible
 // directement depuis n'importe quel module UI, pas besoin de le faire transiter par
 // tous les constructeurs.
@@ -14,7 +14,10 @@ const DICTS = {
     mode: "Mode",
     modeSurvival: "Mode : Survie",
     modeCreative: "Mode : Créatif",
-    language: "Langue",
+    // Libellé bilingue : c'est le bouton qui sert à retrouver sa langue quand le jeu
+    // s'est lancé dans l'autre, donc il doit rester lisible dans les deux.
+    language: "Language / Langue",
+    languageName: "Français",
     settings: "Paramètres",
     resume: "Reprendre",
     exportSave: "Exporter la sauvegarde",
@@ -43,7 +46,8 @@ const DICTS = {
     mode: "Mode",
     modeSurvival: "Mode: Survival",
     modeCreative: "Mode: Creative",
-    language: "Language",
+    language: "Language / Langue",
+    languageName: "English",
     settings: "Settings",
     resume: "Resume",
     exportSave: "Export save",
@@ -69,21 +73,16 @@ const DICTS = {
   },
 };
 
-function detectBrowserLang() {
-  const nav = (navigator.language || Lang.FR).toLowerCase();
-  return nav.startsWith("en") ? Lang.EN : Lang.FR;
-}
-
 class I18n {
   constructor() {
     const saved = localStorage.getItem(STORAGE_KEY);
-    this.lang = saved === Lang.EN || saved === Lang.FR ? saved : detectBrowserLang();
+    this.lang = saved === Lang.EN || saved === Lang.FR ? saved : Lang.EN;
     this._listeners = new Set();
   }
 
-  /** Traduit une clé dans la langue courante (repli FR puis la clé elle-même). */
+  /** Traduit une clé dans la langue courante (repli EN puis la clé elle-même). */
   t(key) {
-    return DICTS[this.lang]?.[key] ?? DICTS[Lang.FR][key] ?? key;
+    return DICTS[this.lang]?.[key] ?? DICTS[Lang.EN][key] ?? key;
   }
 
   set(lang) {
